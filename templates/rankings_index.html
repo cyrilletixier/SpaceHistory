@@ -1,0 +1,36 @@
+{% extends "layout.html" %}
+{% block title %}Classements — SpaceHistory{% endblock %}
+{% block description %}Classements de l'histoire spatiale par décennie, année, lanceur, site de lancement et agence, calculés au build sur les {{ stats.launches | int_fr }} tentatives orbitales du GCAT.{% endblock %}
+{% block content %}
+
+  <section class="wrap">
+    <div class="page-head">
+      <p class="kicker">Palmarès · {{ stats.period }}</p>
+      <h1 class="page-title">Classements</h1>
+      <p class="page-sub">
+        Chaque classement est calculé au build sur les {{ stats.launches | int_fr }} tentatives
+        de lancement orbital du GCAT, puis rendu en HTML : les chiffres sont dans la page,
+        pas dans un script. Succès et échecs sont séparés, les objets sont comptés à part.
+      </p>
+    </div>
+
+    <div class="cards">
+      {% for rk in rankings %}
+      <a class="card" href="{{ rk.slug }}.html">
+        <span class="index">{{ '%02d' % loop.index }} / {{ rk.nav }}</span>
+        <h2>{{ rk.title }}</h2>
+        <p>{{ rk.sub }}</p>
+        <span class="go">Ouvrir →</span>
+      </a>
+      {% endfor %}
+    </div>
+
+    <p class="note">
+      Les taux de réussite sont calculés sur les seules issues connues
+      (<code>OS</code> et <code>OF</code>), les statuts indéterminés étant exclus du
+      dénominateur. Les entités ne sont pas fusionnées : URSS, Russie et Ukraine restent
+      distinctes, comme les codes d'agence du GCAT.
+    </p>
+  </section>
+
+{% endblock %}

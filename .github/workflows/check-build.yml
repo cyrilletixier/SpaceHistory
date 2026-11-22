@@ -1,0 +1,63 @@
+name: Check build
+
+# Vérifie qu'une pull request produit bien un _site/ complet.
+# Ne déploie rien : la publication reste le monopole de « Deploy site » sur main.
+# L'artefact « site-preview » permet de comparer le rendu avant fusion.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build _site
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install build dependencies
+        run: pip install -r requirements.txt
+
+      - name: Build
+        run: python3 scripts/build_site.py --data data/gcat --out _site
+
+      - name: Sanity checks
+        run: |
+          set -euo pipefail
+          for page in \
+            index.html \
+            launches.html \
+            objets.html \
+            sitemap.xml \
+            robots.txt \
+            data/launches.json \
+            classements/index.html \
+            classements/decennies.html \
+            classements/annees.html \
+            classements/lanceurs.html \
+            classements/sites.html \
+            classements/agences.html \
+            assets/css/style.css \
+            assets/js/explorer.js ; do
+            test -s "_site/$page" || { echo "fichier manquant ou vide : $page" ; exit 1 ; }
+          done
+          echo "--- poids ---"
+          du -sh _site
+          du -h _site/data/launches.json
+
+      - name: Upload preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-preview
+          path: _site
+          retention-days: 7

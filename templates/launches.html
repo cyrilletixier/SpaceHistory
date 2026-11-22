@@ -1,39 +1,17 @@
-<!doctype html>
-<html lang="fr">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Lancements — SpaceHistory</title>
-<meta name="description" content="Toutes les tentatives de lancement orbital depuis 1957, d'après le GCAT : filtres par année, lanceur, site et statut, avec pagination.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@300;400;500&display=swap">
-<link rel="stylesheet" href="assets/css/style.css">
-</head>
-<body>
-
-<header class="site-head">
-  <div class="wrap">
-    <a class="brand" href="index.html"><span class="dot"></span>Space<span class="brand-thin">History</span></a>
-    <nav class="nav">
-      <a href="index.html">Projet</a>
-      <a href="launches.html" aria-current="page">Lancements</a>
-      <a href="objects.html">Objets</a>
-      <a href="https://planet4589.org/space/gcat/" target="_blank" rel="noopener">Source GCAT ↗</a>
-    </nav>
-  </div>
-</header>
-
-<main>
+{% extends "layout.html" %}
+{% block title %}Lancements — SpaceHistory{% endblock %}
+{% block description %}Les {{ stats.launches | int_fr }} tentatives de lancement orbital recensées depuis 1957, avec filtres par année, lanceur, site et statut.{% endblock %}
+{% block content %}
 
   <section class="wrap">
     <div class="page-head">
-      <p class="kicker">Jeu de données · <span id="ds-file" class="mono">launchlog.tsv</span></p>
+      <p class="kicker">Explorateur · <span class="mono">launchlog.tsv</span> agrégé</p>
       <h1 class="page-title">Lancements</h1>
       <p class="page-sub">
-        Toutes les tentatives de lancement orbital recensées par le GCAT depuis le
-        4 octobre 1957. Une ligne = un lancement : les objets d'un même tir sont agrégés
-        par <code>Launch_Tag</code>, le nombre d'objets reste affiché séparément.
+        Les {{ stats.launches | int_fr }} tentatives de lancement orbital recensées par le
+        GCAT depuis le 4 octobre 1957. Une ligne = un lancement : les objets d'un même tir
+        sont agrégés par <code>Launch_Tag</code> au moment du build, et le nombre d'objets
+        reste affiché séparément.
       </p>
     </div>
 
@@ -63,8 +41,8 @@
         <span>Statut</span>
         <select id="f-status">
           <option value="">tous</option>
-          <option value="succes">succès</option>
-          <option value="echec">échec</option>
+          <option value="succès">succès</option>
+          <option value="échec">échec</option>
           <option value="inconnu">inconnu</option>
         </select>
       </label>
@@ -72,7 +50,7 @@
     </div>
 
     <div class="result-bar">
-      <span id="count">chargement…</span>
+      <span id="count">{{ stats.launches | int_fr }} lancements</span>
       <span class="result-right">
         <label class="inline-field">
           lignes
@@ -109,27 +87,13 @@
     <nav class="pager" id="pager" aria-label="Pagination des lancements"></nav>
 
     <p class="note">
-      Statut dérivé des codes <code>LVState</code> / <code>SatState</code> du GCAT
-      (<code>OS</code> = succès orbital, <code>OF</code> = échec orbital) ; le code brut
-      est affiché à côté. <span id="ds-rows" class="mono">—</span> lignes brutes dans le fichier source.
+      Statut dérivé du code <code>LVState</code> du GCAT (<code>OS</code> = succès orbital,
+      <code>OF</code> = échec orbital) ; le code brut est affiché à côté.
+      {{ source_rows | int_fr }} lignes brutes dans le fichier source, agrégées en
+      {{ stats.launches | int_fr }} lancements.
     </p>
   </section>
 
-</main>
+{% endblock %}
 
-<footer class="site-foot">
-  <div class="wrap foot-grid">
-    <div>
-      <p>SpaceHistory — classements sur l'histoire spatiale</p>
-      <p>Données : <a href="https://planet4589.org/space/gcat/" target="_blank" rel="noopener">GCAT</a>, © Jonathan McDowell · CC BY 4.0</p>
-    </div>
-    <div>
-      <p>Synchronisation : <span id="sync-date">—</span></p>
-      <p><a href="https://github.com/cyrilletixier/SpaceHistory">Code source</a> · <a href="https://github.com/cyrilletixier/SpaceHistory/blob/main/SOURCES.md">Sources &amp; méthode</a></p>
-    </div>
-  </div>
-</footer>
-
-<script type="module" src="assets/js/launches.js"></script>
-</body>
-</html>
+{% block scripts %}<script type="module" src="{{ root }}assets/js/explorer.js"></script>{% endblock %}

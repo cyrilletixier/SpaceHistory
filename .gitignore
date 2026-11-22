@@ -4,6 +4,9 @@ __pycache__/
 .venv/
 venv/
 
+# Sortie du build (régénérée par scripts/build_site.py)
+_site/
+
 # OS / éditeurs
 .DS_Store
 Thumbs.db

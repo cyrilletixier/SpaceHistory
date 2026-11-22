@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}SpaceHistory — l'histoire spatiale en données{% endblock %}</title>
+<meta name="description" content="{% block description %}Lancements orbitaux et objets mis en orbite depuis 1957, d'après le General Catalog of Artificial Space Objects (GCAT).{% endblock %}">
+<link rel="canonical" href="{{ site_url }}/{{ page_path }}">
+<link rel="sitemap" type="application/xml" href="{{ root }}sitemap.xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@300;400;500&display=swap">
+<link rel="stylesheet" href="{{ root }}assets/css/style.css">
+</head>
+<body>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="{{ root }}index.html"><span class="dot"></span>Space<span class="brand-thin">History</span></a>
+    <nav class="nav">
+      <a href="{{ root }}index.html"{% if active == 'home' %} aria-current="page"{% endif %}>Projet</a>
+      <a href="{{ root }}launches.html"{% if active == 'launches' %} aria-current="page"{% endif %}>Lancements</a>
+      <a href="{{ root }}classements/index.html"{% if active == 'rankings' %} aria-current="page"{% endif %}>Classements</a>
+      <a href="{{ root }}objets.html"{% if active == 'objets' %} aria-current="page"{% endif %}>Objets</a>
+      <a href="https://planet4589.org/space/gcat/" target="_blank" rel="noopener">Source GCAT ↗</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+{% block content %}{% endblock %}
+</main>
+
+<footer class="site-foot">
+  <div class="wrap foot-grid">
+    <div>
+      <p>SpaceHistory — classements sur l'histoire spatiale</p>
+      <p>Données : <a href="https://planet4589.org/space/gcat/" target="_blank" rel="noopener">GCAT</a>, © Jonathan McDowell · CC BY 4.0</p>
+    </div>
+    <div>
+      <p>Synchronisation des données : {{ sync_label }}</p>
+      <p><a href="https://github.com/cyrilletixier/SpaceHistory">Code source</a> · <a href="https://github.com/cyrilletixier/SpaceHistory/blob/main/SOURCES.md">Sources &amp; méthode</a></p>
+    </div>
+  </div>
+</footer>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>
