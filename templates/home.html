@@ -37,7 +37,7 @@
       <div class="kpi">
         <span class="kpi-label">Échecs</span>
         <strong class="kpi-value">{{ stats.failures | int_fr }}</strong>
-        <span class="kpi-note">{% if stats.unknown %}dont {{ stats.unknown | int_fr }} de statut inconnu{% else %}lancements perdus{% endif %}</span>
+        <span class="kpi-note">{% if stats.unknown %}dont {{ stats.unknown | int_fr }} au statut indéterminé{% else %}lancements perdus{% endif %}</span>
       </div>
       <div class="kpi">
         <span class="kpi-label">Objets mis en orbite</span>
@@ -73,7 +73,7 @@
         <span class="index">01 / Classements</span>
         <h2>Les palmarès pré-calculés</h2>
         <p>
-          Décennies, années, lanceurs, sites, agences : chaque classement est une page
+          Décennies, années, lanceurs, sites, agences, pays : chaque classement est une page
           générée au build, avec ses tentatives, ses échecs, son taux de réussite et son
           volume d'objets.
         </p>

@@ -7,9 +7,9 @@ Tout ce qui est calculable l'est ici : les pages HTML sortent finies, les
 classements sont rendus au build. Le navigateur ne reçoit plus qu'un JSON
 allégé (une entrée par lancement) pour l'explorateur des lancements.
 
-Les codes bruts du GCAT (sites, organisations) sont traduits via sites.tsv et
-orgs.tsv ; les codes d'origine restent disponibles (infobulle, JSON, journal du
-build) pour que rien ne devienne invérifiable.
+Les codes bruts du GCAT (sites, organisations, États) sont traduits via
+sites.tsv et orgs.tsv ; les codes d'origine restent disponibles (infobulle,
+JSON, journal du build) pour que rien ne devienne invérifiable.
 
 Aucune donnée n'est envoyée sur le réseau : le script lit data/gcat/*.tsv.
 """
@@ -39,8 +39,8 @@ MONTHS = {
     "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12,
 }
 
-# Valeurs de remplissage du GCAT : elles ne désignent aucun lieu ni aucune
-# organisation, on ne les traduit donc pas.
+# Valeurs de remplissage du GCAT : elles ne désignent aucun lieu, aucune
+# organisation, aucun État ; on ne les traduit donc pas.
 UNKNOWN_CODES = {"", "-", "?", "*", "UNK", "X"}
 
 # Colonnes de libellés des tables de référence (sites.tsv et orgs.tsv ont le
@@ -91,7 +91,8 @@ RANKINGS = [
         "show_period": True,
         "limit": 120,
         "source_hint": "Les noms de sites viennent de <code>sites.tsv</code>, la table "
-                       "de référence du GCAT ; le nom complet et le code brut "
+                       "de référence du GCAT. Un même nom peut recouvrir plusieurs "
+                       "codes de sites ; le nom complet et les codes bruts "
                        "s'affichent au survol.",
     },
     {
@@ -104,10 +105,28 @@ RANKINGS = [
         "name_label": "Agence",
         "order": "attempts",
         "show_period": True,
+        "show_detail_line": True,
         "limit": 200,
         "source_hint": "Les noms d'organisations viennent de <code>orgs.tsv</code>, la "
-                       "table de référence du GCAT ; le nom complet et le code brut "
-                       "s'affichent au survol.",
+                       "table de référence du GCAT. Beaucoup d'agences n'ont qu'un "
+                       "sigle : le nom développé donné par le catalogue s'affiche "
+                       "sous le sigle, et le code brut au survol.",
+    },
+    {
+        "slug": "pays",
+        "nav": "Pays",
+        "title": "Les pays lanceurs",
+        "sub": "Tentatives de lancement orbital par pays de l'engin porteur, "
+               "d'après le champ LVState du GCAT. Les États restent ceux du "
+               "catalogue : URSS, Russie et Ukraine sont des lignes distinctes.",
+        "name_label": "Pays",
+        "order": "attempts",
+        "show_period": True,
+        "limit": 120,
+        "source_hint": "Le pays est celui de l'engin lanceur (<code>LVState</code>), pas "
+                       "celui du propriétaire du satellite (<code>SatState</code>). Les "
+                       "noms d'États viennent de <code>orgs.tsv</code> ; le code brut "
+                       "s'affiche au survol.",
     },
 ]
 
@@ -291,6 +310,17 @@ class Translator:
             return " / ".join(self.org_detail(part) or part for part in parts)
         return ""
 
+    def state(self, code: str) -> str:
+        """État / pays : mêmes tables de référence que les organisations.
+
+        `LVState` et `SatState` portent des codes d'État (US, SU, RU, CN…)
+        présents dans orgs.tsv au même titre que les agences.
+        """
+        return self.org(code)
+
+    def state_detail(self, code: str) -> str:
+        return self.org_detail(code)
+
     def report(self) -> None:
         """Trace la couverture des tables de référence, code par code."""
 
@@ -357,6 +387,10 @@ def launch_outcome(codes: list[str]) -> str:
     d'autres pièces portent « OS » — un lancement qui perd sa charge utile
     reste un échec.
 
+    Les rares codes hors de ce trio (`NS`, `NF`, `XS`) ne sont pas des issues
+    orbitales : ils restent « inconnu » plutôt que d'être rangés d'office dans
+    une colonne.
+
     Attention au piège de vocabulaire : dans ce fichier, `LVState` et `SatState`
     ne sont *pas* des codes d'issue mais des codes de **pays** (US, SU, CN…).
     """
@@ -388,7 +422,8 @@ def build_launches(dataset: Dataset, translator: Translator | None = None) -> li
         name: dataset.col(name)
         for name in (
             "Launch_Tag", "Launch_Date", "PLName", "Name", "LV_Type",
-            "Launch_Site", "Launch_Pad", "Agency", "Launch_Code", "SatOwner",
+            "Launch_Site", "Launch_Pad", "Agency", "LVState", "Launch_Code",
+            "SatOwner",
         )
     }
     cell = dataset.cell
@@ -402,8 +437,8 @@ def build_launches(dataset: Dataset, translator: Translator | None = None) -> li
             group = {
                 "tag": tag, "year": year, "date": label, "sort": sort_key,
                 "launcher": "", "site": "", "pad": "", "agency": "",
-                "codes": [], "objects": 0, "names": [], "owners": Counter(),
-                "_seen": set(),
+                "country": "", "codes": [], "objects": 0, "names": [],
+                "owners": Counter(), "_seen": set(),
             }
             groups[tag] = group
 
@@ -414,6 +449,7 @@ def build_launches(dataset: Dataset, translator: Translator | None = None) -> li
             ("site", "Launch_Site"),
             ("pad", "Launch_Pad"),
             ("agency", "Agency"),
+            ("country", "LVState"),
         ):
             if not group[field]:
                 group[field] = cell(row, idx[column])
@@ -443,14 +479,18 @@ def build_launches(dataset: Dataset, translator: Translator | None = None) -> li
         # affiche au survol.
         group["site_code"] = group["site"]
         group["agency_code"] = group["agency"]
+        group["country_code"] = group["country"]
         if translator is not None:
-            group["site"] = translator.site(group["site"])
+            group["site"] = translator.site(group["site_code"])
             group["site_detail"] = translator.site_detail(group["site_code"])
-            group["agency"] = translator.org(group["agency"])
+            group["agency"] = translator.org(group["agency_code"])
             group["agency_detail"] = translator.org_detail(group["agency_code"])
+            group["country"] = translator.state(group["country_code"])
+            group["country_detail"] = translator.state_detail(group["country_code"])
         else:
             group["site_detail"] = ""
             group["agency_detail"] = ""
+            group["country_detail"] = ""
 
         status = launch_outcome(codes)
         group["status"] = status
@@ -533,8 +573,11 @@ def aggregate(
         row["first"] = min(years) if years else None
         row["last"] = max(years) if years else None
         row["code"] = ", ".join(sorted(row.pop("codes")))
-        details = row.pop("details")[:3]
-        row["detail"] = " · ".join(details)
+        details = row.pop("details")
+        # Un nom agrégé peut recouvrir plusieurs entités (les codes de site de
+        # Plesetsk) : l'infobulle les énumère, la colonne n'en montre qu'un.
+        row["detail"] = " · ".join(details[:3])
+        row["detail_one"] = details[0] if details else ""
         tip = []
         if row["detail"]:
             tip.append(f"GCAT : {row['detail']}")
@@ -702,7 +745,7 @@ def build_highlights(launches: list[dict]) -> list[dict]:
 
 
 def report_codes(dataset: Dataset, column: str) -> None:
-    """Trace le vocabulaire complet d'une colonne d'issue.
+    """Trace le vocabulaire complet d'une colonne.
 
     Un changement de codes côté GCAT doit se voir dans le journal du build, pas
     dans les taux affichés : on liste donc toutes les valeurs distinctes.
@@ -747,6 +790,7 @@ def main() -> int:
         f"inconnu {stats['unknown']}"
     )
     report_codes(dataset, "Launch_Code")
+    report_codes(dataset, "LVState")
     translator.report()
 
     manifest: dict = {}
@@ -815,6 +859,11 @@ def main() -> int:
             "key": lambda item: item["agency"],
             "code": lambda item: item["agency_code"],
             "detail": lambda item: item["agency_detail"],
+        },
+        "pays": {
+            "key": lambda item: item["country"],
+            "code": lambda item: item["country_code"],
+            "detail": lambda item: item["country_detail"],
         },
     }
     for ranking in RANKINGS:

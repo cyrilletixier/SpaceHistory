@@ -41,7 +41,8 @@
     <h2 class="page-title" style="font-size:1.5rem;margin-top:2rem">Principaux propriétaires</h2>
     <p class="note">
       Champ <code>SatOwner</code> du GCAT : le code est résolu en nom d'organisation via
-      <code>orgs.tsv</code>, et le nom complet comme le code brut restent accessibles au survol.
+      <code>orgs.tsv</code>. Sous un sigle s'affiche le nom développé donné par le catalogue,
+      et le code brut reste accessible au survol.
     </p>
     <div class="table-wrap">
       <table class="data-table">
@@ -50,7 +51,15 @@
         </thead>
         <tbody>
           {% for row in objects.owners %}
-          <tr><td{% if row.tip %} title="{{ row.tip }}"{% endif %}>{{ row.name }}</td><td class="num">{{ row.count | int_fr }}</td></tr>
+          <tr>
+            <td{% if row.tip %} title="{{ row.tip }}"{% endif %}>
+              {{ row.name }}
+              {% if row.detail and row.detail != row.name %}
+              <span class="dim" style="display:block;font-size:.78rem;line-height:1.35">{{ row.detail }}</span>
+              {% endif %}
+            </td>
+            <td class="num">{{ row.count | int_fr }}</td>
+          </tr>
           {% endfor %}
         </tbody>
       </table>
@@ -69,7 +78,15 @@
         </thead>
         <tbody>
           {% for row in objects.active_owners %}
-          <tr><td{% if row.tip %} title="{{ row.tip }}"{% endif %}>{{ row.name }}</td><td class="num">{{ row.count | int_fr }}</td></tr>
+          <tr>
+            <td{% if row.tip %} title="{{ row.tip }}"{% endif %}>
+              {{ row.name }}
+              {% if row.detail and row.detail != row.name %}
+              <span class="dim" style="display:block;font-size:.78rem;line-height:1.35">{{ row.detail }}</span>
+              {% endif %}
+            </td>
+            <td class="num">{{ row.count | int_fr }}</td>
+          </tr>
           {% endfor %}
         </tbody>
       </table>

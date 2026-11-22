@@ -27,7 +27,14 @@
         <tbody>
           {% for row in rows %}
           <tr>
-            <td{% if row.tip %} title="{{ row.tip }}"{% endif %}>{{ row.name }}</td>
+            <td{% if row.tip %} title="{{ row.tip }}"{% endif %}>
+              {{ row.name }}
+              {# Un sigle seul ne dit rien : le nom développé du GCAT s'affiche
+                 dessous, sans jamais remplacer le libellé du catalogue. #}
+              {% if rk.show_detail_line and row.detail_one and row.detail_one != row.name %}
+              <span class="dim" style="display:block;font-size:.78rem;line-height:1.35">{{ row.detail_one }}</span>
+              {% endif %}
+            </td>
             <td class="num">{{ row.attempts | int_fr }}</td>
             <td class="num dim">{{ row.share | pct }}</td>
             <td class="num">{{ row.successes | int_fr }}</td>
