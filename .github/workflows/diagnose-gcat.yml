@@ -81,7 +81,7 @@ jobs:
             echo
             echo '## Quelques lignes des classements'
             echo
-            for slug in sites agences; do
+            for slug in sites agences pays; do
               echo "### \`classements/$slug.html\`"
               echo
               echo '```'
