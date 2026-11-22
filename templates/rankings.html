@@ -27,7 +27,7 @@
         <tbody>
           {% for row in rows %}
           <tr>
-            <td>{{ row.name }}</td>
+            <td{% if row.code %} title="Code GCAT : {{ row.code }}"{% endif %}>{{ row.name }}</td>
             <td class="num">{{ row.attempts | int_fr }}</td>
             <td class="num dim">{{ row.share | pct }}</td>
             <td class="num">{{ row.successes | int_fr }}</td>
@@ -50,7 +50,9 @@
     <p class="note">
       « Part » = part des tentatives dans le total des {{ stats.launches | int_fr }} lancements.
       « Objets » = nombre d'objets lancés sur ces tentatives. Taux calculé sur les seules
-      issues connues. <a href="{{ root }}classements/index.html">Tous les classements</a>.
+      issues connues.
+      {% if rk.source_hint %}{{ rk.source_hint | safe }} {% endif %}
+      <a href="{{ root }}classements/index.html">Tous les classements</a>.
     </p>
   </section>
 

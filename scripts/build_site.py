@@ -7,6 +7,10 @@ Tout ce qui est calculable l'est ici : les pages HTML sortent finies, les
 classements sont rendus au build. Le navigateur ne reçoit plus qu'un JSON
 allégé (une entrée par lancement) pour l'explorateur des lancements.
 
+Les codes bruts du GCAT (sites, organisations) sont traduits via sites.tsv et
+orgs.tsv ; les codes d'origine restent disponibles (infobulle, JSON, journal du
+build) pour que rien ne devienne invérifiable.
+
 Aucune donnée n'est envoyée sur le réseau : le script lit data/gcat/*.tsv.
 """
 
@@ -34,6 +38,10 @@ MONTHS = {
     "jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
     "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12,
 }
+
+# Valeurs de remplissage du GCAT : elles ne désignent aucun lieu ni aucune
+# organisation, on ne les traduit donc pas.
+UNKNOWN_CODES = {"", "-", "?", "*", "UNK", "X"}
 
 RANKINGS = [
     {
@@ -77,17 +85,22 @@ RANKINGS = [
         "order": "attempts",
         "show_period": True,
         "limit": 120,
+        "source_hint": "Les noms de sites viennent de <code>sites.tsv</code>, la table "
+                       "de référence du GCAT ; le code brut s'affiche au survol.",
     },
     {
         "slug": "agences",
         "nav": "Agences",
         "title": "Les agences et opérateurs",
-        "sub": "Répartition des tentatives orbitales par agence telle que codée "
-               "par le GCAT, sans réécriture des entités historiques.",
+        "sub": "Répartition des tentatives orbitales par agence de lancement, "
+               "sans fusion des entités historiques : URSS, Russie et Ukraine "
+               "restent des lignes distinctes.",
         "name_label": "Agence",
         "order": "attempts",
         "show_period": True,
         "limit": 200,
+        "source_hint": "Les noms d'organisations viennent de <code>orgs.tsv</code>, la "
+                       "table de référence du GCAT ; le code brut s'affiche au survol.",
     },
 ]
 
@@ -154,6 +167,100 @@ def read_gcat_tsv(path: Path) -> Dataset:
         rows.append(cells)
 
     return Dataset(path.name, columns, rows)
+
+
+# --------------------------------------------------------------------------- #
+# Codes GCAT → libellés humains
+# --------------------------------------------------------------------------- #
+
+
+def read_codebook(path: Path, code_column: str, *name_columns: str) -> dict[str, str]:
+    """Lit une table de référence GCAT et retourne code -> premier libellé non vide.
+
+    Sert pour sites.tsv et orgs.tsv : c'est le GCAT lui-même qui nomme ses
+    entités, on ne réécrit donc aucun libellé à la main.
+    """
+    if not path.exists():
+        return {}
+
+    table = read_gcat_tsv(path)
+    code_at = table.col(code_column)
+    if code_at < 0:
+        return {}
+
+    labels = [table.col(name) for name in name_columns]
+    labels = [index for index in labels if index >= 0]
+
+    book: dict[str, str] = {}
+    for row in table.rows:
+        code = table.cell(row, code_at)
+        if not code or not IDENT.match(code):
+            continue
+        for index in labels:
+            label = table.cell(row, index)
+            if label and label not in UNKNOWN_CODES:
+                book.setdefault(code, label)
+                break
+    return book
+
+
+class Translator:
+    """Traduit les codes GCAT en libellés lisibles, sans jamais inventer.
+
+    Un code absent des tables de référence est rendu tel quel et compté : le
+    journal du build dit combien de codes restent à couvrir, et lesquels pèsent
+    le plus.
+    """
+
+    def __init__(self, data_dir: Path):
+        self.sites = read_codebook(
+            data_dir / "sites.tsv", "Site", "ShortName", "ShortEName", "Name"
+        )
+        self.orgs = read_codebook(
+            data_dir / "orgs.tsv", "Code", "ShortName", "ShortEName", "Name"
+        )
+        self.unknown_sites: Counter = Counter()
+        self.unknown_orgs: Counter = Counter()
+
+    def site(self, code: str) -> str:
+        raw = (code or "").strip()
+        if raw in UNKNOWN_CODES:
+            return ""
+        label = self.sites.get(raw)
+        if label is None:
+            self.unknown_sites[raw] += 1
+            return raw
+        return label
+
+    def org(self, code: str) -> str:
+        raw = (code or "").strip()
+        if raw in UNKNOWN_CODES:
+            return ""
+
+        label = self.orgs.get(raw)
+        if label is not None:
+            return label
+
+        # Un code d'agence peut être composite (« NASA/USAF ») : on traduit
+        # chaque composante séparément plutôt que de laisser un code brut.
+        parts = [part.strip() for part in raw.split("/") if part.strip()]
+        if len(parts) > 1:
+            return " / ".join(self.org(part) or part for part in parts)
+
+        self.unknown_orgs[raw] += 1
+        return raw
+
+    def report(self) -> None:
+        """Trace la couverture des tables de référence, code par code."""
+
+        def summary(counter: Counter) -> str:
+            if not counter:
+                return "aucun"
+            top = ", ".join(f"{code}={count}" for code, count in counter.most_common(6))
+            return f"{len(counter)} code(s) — {top}"
+
+        print(f"libellés sites : {len(self.sites)} entrées ; non résolus : {summary(self.unknown_sites)}")
+        print(f"libellés organisations : {len(self.orgs)} entrées ; non résolus : {summary(self.unknown_orgs)}")
 
 
 # --------------------------------------------------------------------------- #
@@ -234,7 +341,7 @@ def representative_code(codes: list[str], status: str) -> str:
     return codes[0] if codes else ""
 
 
-def build_launches(dataset: Dataset) -> list[dict]:
+def build_launches(dataset: Dataset, translator: Translator | None = None) -> list[dict]:
     """Agrège launchlog.tsv par Launch_Tag : une entrée = un lancement."""
     idx = {
         name: dataset.col(name)
@@ -289,6 +396,15 @@ def build_launches(dataset: Dataset) -> list[dict]:
     for group in groups.values():
         codes = group.pop("codes")
         group.pop("_seen")
+
+        # On garde le code brut à côté du libellé : c'est lui qui reste
+        # vérifiable dans le GCAT, et c'est lui qu'on affiche au survol.
+        group["site_code"] = group["site"]
+        group["agency_code"] = group["agency"]
+        if translator is not None:
+            group["site"] = translator.site(group["site"])
+            group["agency"] = translator.org(group["agency"])
+
         status = launch_outcome(codes)
         group["status"] = status
         group["state"] = representative_code(codes, status)
@@ -320,8 +436,17 @@ def launch_stats(launches: list[dict]) -> dict:
     }
 
 
-def aggregate(launches: list[dict], key_func, order: str = "attempts") -> list[dict]:
-    """Agrège les lancements selon une clé, avec taux et part du total."""
+def aggregate(
+    launches: list[dict],
+    key_func,
+    order: str = "attempts",
+    code_func=None,
+) -> list[dict]:
+    """Agrège les lancements selon une clé, avec taux et part du total.
+
+    `code_func` collecte les codes GCAT d'origine d'une ligne agrégée : ils
+    servent d'infobulle, pour qu'un libellé traduit ne cache jamais sa source.
+    """
     buckets: dict[str, dict] = {}
 
     for item in launches:
@@ -332,7 +457,7 @@ def aggregate(launches: list[dict], key_func, order: str = "attempts") -> list[d
         if bucket is None:
             bucket = {
                 "name": name, "attempts": 0, "successes": 0,
-                "failures": 0, "objects": 0, "years": [],
+                "failures": 0, "objects": 0, "years": [], "codes": set(),
             }
             buckets[name] = bucket
         bucket["attempts"] += 1
@@ -343,12 +468,17 @@ def aggregate(launches: list[dict], key_func, order: str = "attempts") -> list[d
             bucket["failures"] += 1
         if item["year"]:
             bucket["years"].append(item["year"])
+        if code_func is not None:
+            code = (code_func(item) or "").strip()
+            if code:
+                bucket["codes"].add(code)
 
     rows = list(buckets.values())
     for row in rows:
         years = row.pop("years")
         row["first"] = min(years) if years else None
         row["last"] = max(years) if years else None
+        row["code"] = ", ".join(sorted(row.pop("codes")))
         known = row["successes"] + row["failures"]
         row["rate"] = (100 * row["successes"] / known) if known else None
 
@@ -411,7 +541,9 @@ def decade_of(year: int | None) -> str:
     return f"{year // 10 * 10}s" if year else "inconnue"
 
 
-def build_objects_view(launches: list[dict], data_dir: Path) -> dict:
+def build_objects_view(
+    launches: list[dict], data_dir: Path, translator: Translator | None = None
+) -> dict:
     """Vue « objets » : objets mis en orbite par décennie et par propriétaire."""
     decades: dict[str, dict] = {}
     owners: Counter = Counter()
@@ -426,6 +558,19 @@ def build_objects_view(launches: list[dict], data_dir: Path) -> dict:
         entry["objects"] += item["objects"]
         owners.update(item["owners"])
 
+    def describe(counter: Counter, limit: int) -> list[dict]:
+        """Code -> libellé, en gardant le code sous le coude pour l'infobulle."""
+        rows = []
+        for code, count in counter.most_common(limit):
+            rows.append(
+                {
+                    "name": translator.org(code) if translator else code,
+                    "code": code,
+                    "count": count,
+                }
+            )
+        return rows
+
     active_total = None
     active_owners: list[dict] = []
     active_path = data_dir / "active.tsv"
@@ -437,13 +582,11 @@ def build_objects_view(launches: list[dict], data_dir: Path) -> dict:
                 value for value in (active.cell(row, index) for row in active.rows) if value
             )
             active_total = len(active.rows)
-            active_owners = [
-                {"name": key, "count": value} for key, value in counts.most_common(15)
-            ]
+            active_owners = describe(counts, 15)
 
     return {
         "decades": list(decades.values()),
-        "owners": [{"name": k, "count": v} for k, v in owners.most_common(25)],
+        "owners": describe(owners, 25),
         "active_total": active_total,
         "active_owners": active_owners,
     }
@@ -523,7 +666,8 @@ def main() -> int:
         return 1
 
     dataset = read_gcat_tsv(launchlog)
-    launches = build_launches(dataset)
+    translator = Translator(data_dir)
+    launches = build_launches(dataset, translator)
     stats = launch_stats(launches)
 
     print(
@@ -531,6 +675,7 @@ def main() -> int:
         f"inconnu {stats['unknown']}"
     )
     report_codes(dataset, "Launch_Code")
+    translator.report()
 
     manifest: dict = {}
     manifest_path = data_dir / "MANIFEST.json"
@@ -575,7 +720,7 @@ def main() -> int:
     render(
         env, "objets.html", out_dir / "objets.html",
         root="", page_path="objets.html", active="objets",
-        objects=build_objects_view(launches, data_dir), **base,
+        objects=build_objects_view(launches, data_dir, translator), **base,
     )
     render(
         env, "rankings_index.html", out_dir / "classements" / "index.html",
@@ -583,16 +728,18 @@ def main() -> int:
         rankings=RANKINGS, **base,
     )
 
-    # Une page par classement
+    # Une page par classement : les libellés sont déjà humains, le code GCAT
+    # d'origine accompagne chaque ligne agrégée pour l'infobulle.
     keys = {
-        "decennies": lambda item: decade_of(item["year"]),
-        "annees": lambda item: str(item["year"]) if item["year"] else "",
-        "lanceurs": lambda item: item["launcher"],
-        "sites": lambda item: item["site"],
-        "agences": lambda item: item["agency"],
+        "decennies": (lambda item: decade_of(item["year"]), None),
+        "annees": (lambda item: str(item["year"]) if item["year"] else "", None),
+        "lanceurs": (lambda item: item["launcher"], None),
+        "sites": (lambda item: item["site"], lambda item: item["site_code"]),
+        "agences": (lambda item: item["agency"], lambda item: item["agency_code"]),
     }
     for ranking in RANKINGS:
-        rows = aggregate(launches, keys[ranking["slug"]], ranking["order"])
+        key_func, code_func = keys[ranking["slug"]]
+        rows = aggregate(launches, key_func, ranking["order"], code_func)
         limit = ranking.get("limit")
         render(
             env, "rankings.html", out_dir / "classements" / f"{ranking['slug']}.html",
@@ -601,7 +748,8 @@ def main() -> int:
             hidden=max(0, len(rows) - (limit or len(rows))), **base,
         )
 
-    # Explorateur : une entrée par lancement, colonnes utiles seulement
+    # Explorateur : une entrée par lancement, colonnes utiles seulement.
+    # `s` et `a` portent les libellés, `sc` et `ac` les codes GCAT d'origine.
     payload = {
         "source": "GCAT — launchlog.tsv (Jonathan McDowell)",
         "generated": manifest.get("generated_at"),
@@ -614,7 +762,9 @@ def main() -> int:
                 "y": item["year"],
                 "lv": item["launcher"],
                 "s": item["site"],
+                "sc": item["site_code"],
                 "a": item["agency"],
+                "ac": item["agency_code"],
                 "o": item["objects"],
                 "n": " · ".join(item["names"][:8])[:140],
                 "st": item["status"],

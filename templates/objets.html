@@ -39,15 +39,18 @@
     </div>
 
     <h2 class="page-title" style="font-size:1.5rem;margin-top:2rem">Principaux propriétaires</h2>
-    <p class="note">Champ <code>SatOwner</code> du GCAT, tel quel : les codes abrégés ne sont pas réécrits.</p>
+    <p class="note">
+      Champ <code>SatOwner</code> du GCAT : le code est résolu en nom d'organisation via
+      <code>orgs.tsv</code>, et le code brut reste affiché au survol.
+    </p>
     <div class="table-wrap">
       <table class="data-table">
         <thead>
-          <tr><th>Propriétaire (code GCAT)</th><th class="num">Objets</th></tr>
+          <tr><th>Propriétaire</th><th class="num">Objets</th></tr>
         </thead>
         <tbody>
           {% for row in objects.owners %}
-          <tr><td class="mono">{{ row.name }}</td><td class="num">{{ row.count | int_fr }}</td></tr>
+          <tr><td title="Code GCAT : {{ row.code }}">{{ row.name }}</td><td class="num">{{ row.count | int_fr }}</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -62,11 +65,11 @@
     <div class="table-wrap">
       <table class="data-table">
         <thead>
-          <tr><th>Propriétaire (code GCAT)</th><th class="num">Satellites actifs</th></tr>
+          <tr><th>Propriétaire</th><th class="num">Satellites actifs</th></tr>
         </thead>
         <tbody>
           {% for row in objects.active_owners %}
-          <tr><td class="mono">{{ row.name }}</td><td class="num">{{ row.count | int_fr }}</td></tr>
+          <tr><td title="Code GCAT : {{ row.code }}">{{ row.name }}</td><td class="num">{{ row.count | int_fr }}</td></tr>
           {% endfor %}
         </tbody>
       </table>
