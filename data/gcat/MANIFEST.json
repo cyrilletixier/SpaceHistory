@@ -1,0 +1,97 @@
+{
+  "source": "Jonathan McDowell — General Catalog of Artificial Space Objects",
+  "source_url": "https://planet4589.org/space/gcat/",
+  "license": "CC BY 4.0",
+  "citation": "McDowell, J., 2020: General Catalog of Artificial Space Objects, https://planet4589.org/space/gcat",
+  "generated_at": "2026-11-22T20:24:45Z",
+  "files": [
+    {
+      "name": "launchlog.tsv",
+      "path": "data/gcat/launchlog.tsv",
+      "url": "https://planet4589.org/space/gcat/tsv/derived/launchlog.tsv",
+      "source_path": "derived/launchlog.tsv",
+      "description": "Journal des lancements orbitaux (une ligne par objet lancé)",
+      "bytes": 5316422,
+      "rows": 32246,
+      "columns": 20,
+      "sha256": "9df24e7b7aa1e3c95f85d3e504327658f641f7fbaf09beecd8abc8a3cf5a3339"
+    },
+    {
+      "name": "active.tsv",
+      "path": "data/gcat/active.tsv",
+      "url": "https://planet4589.org/space/gcat/tsv/derived/active.tsv",
+      "source_path": "derived/active.tsv",
+      "description": "Satellites actuellement actifs",
+      "bytes": 2619133,
+      "rows": 17315,
+      "columns": 21,
+      "sha256": "dd48ca555da636f2ed6ef5209aeb3a0d0a03cc2b124a5ef5b36d896b67ee2d7f"
+    },
+    {
+      "name": "currentcat.tsv",
+      "path": "data/gcat/currentcat.tsv",
+      "url": "https://planet4589.org/space/gcat/tsv/derived/currentcat.tsv",
+      "source_path": "derived/currentcat.tsv",
+      "description": "Objets actuellement en orbite, débris compris",
+      "bytes": 14472022,
+      "rows": 83845,
+      "columns": 23,
+      "sha256": "3f7a9a96b7ab4259500194eead998d388a7444f7b9c8a6296f773b3e62b6695a"
+    },
+    {
+      "name": "geotab.tsv",
+      "path": "data/gcat/geotab.tsv",
+      "url": "https://planet4589.org/space/gcat/tsv/derived/geotab.tsv",
+      "source_path": "derived/geotab.tsv",
+      "description": "Journal des satellites géostationnaires",
+      "bytes": 317744,
+      "rows": 1969,
+      "columns": 19,
+      "sha256": "7e4fe2ac7b02c8dadc9b9fc64e8dbd28feb28fd7b07004821bb55cee64154e3f"
+    },
+    {
+      "name": "satcat.tsv",
+      "path": "data/gcat/satcat.tsv",
+      "url": "https://planet4589.org/space/gcat/tsv/cat/satcat.tsv",
+      "source_path": "cat/satcat.tsv",
+      "description": "Catalogue complet des objets spatiaux",
+      "bytes": 19298682,
+      "rows": 69999,
+      "columns": 42,
+      "sha256": "1bc2583c1897283b13d015a6bed0f723cae5f571f55e3b8b05753423224f5756"
+    },
+    {
+      "name": "psatcat.tsv",
+      "path": "data/gcat/psatcat.tsv",
+      "url": "https://planet4589.org/space/gcat/tsv/cat/psatcat.tsv",
+      "source_path": "cat/psatcat.tsv",
+      "description": "Catalogue des charges utiles",
+      "bytes": 5233738,
+      "rows": 27940,
+      "columns": 28,
+      "sha256": "fbdfa6613861a5d460d4792417a3458edc8d238ce1b3bbc007dc2a51079c3378"
+    },
+    {
+      "name": "ftocat.tsv",
+      "path": "data/gcat/ftocat.tsv",
+      "url": "https://planet4589.org/space/gcat/tsv/cat/ftocat.tsv",
+      "source_path": "cat/ftocat.tsv",
+      "description": "Catalogue des échecs de mise en orbite",
+      "bytes": 523866,
+      "rows": 1845,
+      "columns": 42,
+      "sha256": "7ca58a3c1ce6b7747f0480f2b087931bd0e2886d68f092c45acd03c5836ace85"
+    },
+    {
+      "name": "deepcat.tsv",
+      "path": "data/gcat/deepcat.tsv",
+      "url": "https://planet4589.org/space/gcat/tsv/cat/deepcat.tsv",
+      "source_path": "cat/deepcat.tsv",
+      "description": "Catalogue de l'espace lointain",
+      "bytes": 352230,
+      "rows": 1244,
+      "columns": 42,
+      "sha256": "32cac6cbf304e6efbf11a0248be9b585ee29c169e3f729dd3e6b434648aa553b"
+    }
+  ]
+}
