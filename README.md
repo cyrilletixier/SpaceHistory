@@ -3,6 +3,8 @@
 Exploration et classements sur l'histoire spatiale, à partir d'une source unique :
 le **General Catalog of Artificial Space Objects (GCAT)** de Jonathan McDowell.
 
+Site publié : **<https://cyrilletixier.github.io/SpaceHistory/>**
+
 Le dépôt remplit deux rôles :
 
 1. **entrepôt de données brutes** — `data/gcat/` contient les fichiers TSV du GCAT, tels que publiés,
@@ -21,10 +23,26 @@ Le dépôt remplit deux rôles :
 Aucun build, aucune dépendance : les pages lisent directement les TSV de `data/gcat/`
 dans le navigateur (agrégation et filtres côté client).
 
-### Activer GitHub Pages
+### Publication (GitHub Pages)
 
-Settings → Pages → *Source* : **Deploy from a branch** → branche `main`, dossier **/ (root)**.
-Le fichier `.nojekyll` est déjà présent.
+`.github/workflows/pages.yml` construit l'artefact et le déploie :
+
+- **URL** : <https://cyrilletixier.github.io/SpaceHistory/>
+- **déclencheurs** : push sur `main`, fin du workflow *Update GCAT data* (déclencheur
+  `workflow_run` — indispensable car un commit poussé avec le `GITHUB_TOKEN` ne déclenche
+  pas les workflows `push`), et lancement manuel ;
+- **contenu publié** : `index.html`, `launches.html`, `objects.html`, `assets/`, `data/`,
+  plus un `.nojekyll` et un `robots.txt` générés. Ni `.git`, ni `scripts/`, ni `.github/` ;
+- **activation** : `actions/configure-pages` avec `enablement: true` crée le site en mode
+  *GitHub Actions* s'il n'existe pas encore.
+
+> Si le job de déploiement échoue avec « Pages site is not configured to use GitHub
+> Actions », il faut basculer une fois le réglage :
+> **Settings → Pages → *Source* : GitHub Actions**, puis relancer le workflow.
+
+Le site est reconstruit à chaque modification du code **et** à chaque resynchronisation des
+données : l'artefact embarqué contient les TSV, donc les pages servies sont toujours
+alignées sur la dernière récupération.
 
 ## Les données
 
@@ -56,7 +74,8 @@ puis les données. Les champs sont complétés par des espaces ; les dates sont 
 - téléchargement des 8 fichiers, comparaison par SHA-256, écriture **uniquement si le
   contenu a changé** ;
 - `MANIFEST.json` n'est réécrit que si les données ont réellement bougé ;
-- commit `data: GCAT refresh AAAA-MM-JJ` par le bot, sans boucle de workflow.
+- commit `data: GCAT refresh AAAA-MM-JJ` par le bot — puis republication du site via
+  `workflow_run`.
 
 Script sans dépendance externe (stdlib Python ≥ 3.9) :
 
@@ -88,19 +107,21 @@ sont documentées dans [`SOURCES.md`](SOURCES.md).
 
 ```
 .
-├── index.html                 # page projet
-├── launches.html              # page lancements
-├── objects.html               # page objets mis en orbite
+├── index.html                  # page projet
+├── launches.html               # page lancements
+├── objects.html                # page objets mis en orbite
 ├── assets/
-│   ├── css/style.css          # thème sombre inspiré de Rocket Lab
+│   ├── css/style.css           # thème sombre inspiré de Rocket Lab
 │   └── js/
-│       ├── gcat.js            # parseur TSV GCAT, dates, pagination, utilitaires
-│       ├── home.js            # page projet (lit MANIFEST.json)
-│       ├── launches.js        # agrégation par Launch_Tag + filtres
-│       └── objects.js         # charges utiles + filtres
-├── data/gcat/                 # données brutes GCAT + MANIFEST.json
-├── scripts/fetch_gcat.py      # récupération des TSV
-└── .github/workflows/update-gcat.yml
+│       ├── gcat.js             # parseur TSV GCAT, dates, pagination, utilitaires
+│       ├── home.js             # page projet (lit MANIFEST.json)
+│       ├── launches.js         # agrégation par Launch_Tag + filtres
+│       └── objects.js          # charges utiles + filtres
+├── data/gcat/                  # données brutes GCAT + MANIFEST.json
+├── scripts/fetch_gcat.py       # récupération des TSV
+└── .github/workflows/
+    ├── update-gcat.yml         # récupération hebdomadaire des données
+    └── pages.yml               # publication du site sur GitHub Pages
 ```
 
 ## Licences
