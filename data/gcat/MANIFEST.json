@@ -3,7 +3,7 @@
   "source_url": "https://planet4589.org/space/gcat/",
   "license": "CC BY 4.0",
   "citation": "McDowell, J., 2020: General Catalog of Artificial Space Objects, https://planet4589.org/space/gcat",
-  "generated_at": "2026-11-22T20:24:45Z",
+  "generated_at": "2026-11-22T22:31:51Z",
   "files": [
     {
       "name": "launchlog.tsv",
@@ -92,6 +92,39 @@
       "rows": 1244,
       "columns": 42,
       "sha256": "32cac6cbf304e6efbf11a0248be9b585ee29c169e3f729dd3e6b434648aa553b"
+    },
+    {
+      "name": "orgs.tsv",
+      "path": "data/gcat/orgs.tsv",
+      "url": "https://planet4589.org/space/gcat/tsv/tables/orgs.tsv",
+      "source_path": "tables/orgs.tsv",
+      "description": "Organisations : code d'agence ou de propriétaire → nom",
+      "bytes": 712172,
+      "rows": 4146,
+      "columns": 17,
+      "sha256": "9aebbf3059457d202621a15a746033a8d9a008c366f3286c6484a2ec85f908aa"
+    },
+    {
+      "name": "sites.tsv",
+      "path": "data/gcat/sites.tsv",
+      "url": "https://planet4589.org/space/gcat/tsv/tables/sites.tsv",
+      "source_path": "tables/sites.tsv",
+      "description": "Sites de lancement : code → nom et coordonnées",
+      "bytes": 125822,
+      "rows": 712,
+      "columns": 18,
+      "sha256": "3075ae7639661628a8e0d2bfcae2b880d307a4d2c6ef3a272bc6fdc4e24b1929"
+    },
+    {
+      "name": "lp.tsv",
+      "path": "data/gcat/lp.tsv",
+      "url": "https://planet4589.org/space/gcat/tsv/tables/lp.tsv",
+      "source_path": "tables/lp.tsv",
+      "description": "Pas de tir : code → nom et site de rattachement",
+      "bytes": 367898,
+      "rows": 2807,
+      "columns": 17,
+      "sha256": "5729cc863427ef41efb3db30e2c1ac5400c24db4a1d0456caafcf20e513bd066"
     }
   ]
 }
