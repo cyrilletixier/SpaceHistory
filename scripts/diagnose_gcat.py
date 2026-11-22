@@ -145,6 +145,44 @@ def describe(path: Path, limit: int, sample_lines: bool) -> list[str]:
     return out
 
 
+def samples(path: Path, column: str, limit: int = 12, examples: int = 4) -> list[str]:
+    """Échantillonne des lignes pour chaque valeur d'une colonne.
+
+    Sert à lever un doute de vocabulaire : si les lignes étiquetées « DS » sont
+    des sondes lunaires et planétaires, alors « DS » veut bien dire espace
+    lointain, et non je-ne-sais-quoi d'autre.
+    """
+    columns, rows, _ = read_tsv(path)
+    if not columns or column not in columns:
+        return []
+
+    index = {name: position for position, name in enumerate(columns)}
+    code_at = index[column]
+    date_at = index.get("Launch_Date", 1)
+    lv_at = index.get("LV_Type", 9)
+    name_at = index.get("Name", 4)
+
+    counts = Counter(row[code_at] for row in rows if code_at < len(row) and row[code_at])
+    out = [f"### Échantillons par `{column}`", ""]
+
+    for code, _ in counts.most_common(limit):
+        out.append(f"- `{code}` ({counts[code]} pièces)")
+        shown = 0
+        for row in rows:
+            if code_at >= len(row) or row[code_at] != code:
+                continue
+            out.append(
+                f"  - {shorten(row[date_at], 22)} · {shorten(row[lv_at], 26)}"
+                f" · {shorten(row[name_at], 28)}"
+            )
+            shown += 1
+            if shown >= examples:
+                break
+
+    out.append("")
+    return out
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data", default="data/gcat")
@@ -167,6 +205,7 @@ def main() -> int:
         path = data_dir / name
         if path.exists():
             report += describe(path, limit=6, sample_lines=True)
+            report += samples(path, "Launch_Code")
 
     for name in COMPACT:
         path = data_dir / name
