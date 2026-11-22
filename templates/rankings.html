@@ -51,7 +51,7 @@
       « Part » = part des tentatives dans le total des {{ stats.launches | int_fr }} lancements.
       « Objets » = nombre d'objets lancés sur ces tentatives. Taux calculé sur les seules
       issues connues.
-      {% if rk.source_hint %}{{ rk.source_hint }} {% endif %}
+      {% if rk.source_hint %}{{ rk.source_hint | safe }} {% endif %}
       <a href="{{ root }}classements/index.html">Tous les classements</a>.
     </p>
   </section>
