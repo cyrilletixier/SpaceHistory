@@ -34,7 +34,6 @@ MONTHS = {
     "jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
     "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12,
 }
-STATUS = {"OS": "succès", "OF": "échec"}
 
 RANKINGS = [
     {
@@ -198,13 +197,48 @@ def parse_date(raw: str) -> tuple[int | None, str, str]:
     return year, label, key
 
 
+def launch_outcome(lv_codes: list[str], sat_codes: list[str]) -> str:
+    """Qualifie un lancement d'après les codes d'issue de ses pièces.
+
+    L'échec prime : un seul code « OF » suffit à qualifier le lancement, même
+    si d'autres pièces sont marquées « OS ». La comparaison se fait par préfixe
+    parce que le GCAT décline ces codes (« OS », « O », « OF »…).
+    """
+    lv = [code.upper() for code in lv_codes]
+    sat = [code.upper() for code in sat_codes]
+
+    if any(code.startswith("OF") for code in lv):
+        return "échec"
+    if any(code.startswith("OS") for code in lv):
+        return "succès"
+    if any(code.startswith("OF") for code in sat):
+        return "échec"
+    if any(code.startswith("O") for code in sat):
+        return "succès"
+    return "inconnu"
+
+
+def representative_code(codes: list[str], status: str) -> str:
+    """Code le plus parlant à afficher à côté du statut."""
+    if status == "échec":
+        for code in codes:
+            if code.upper().startswith("OF"):
+                return code
+    elif status == "succès":
+        for code in codes:
+            if code.upper().startswith("O"):
+                return code
+    return codes[0] if codes else ""
+
+
 def build_launches(dataset: Dataset) -> list[dict]:
     """Agrège launchlog.tsv par Launch_Tag : une entrée = un lancement."""
     idx = {
         name: dataset.col(name)
         for name in (
             "Launch_Tag", "Launch_Date", "PLName", "Name", "LV_Type",
-            "Launch_Site", "Launch_Pad", "Agency", "LVState", "SatOwner",
+            "Launch_Site", "Launch_Pad", "Agency", "LVState", "SatState",
+            "SatOwner",
         )
     }
     cell = dataset.cell
@@ -218,8 +252,8 @@ def build_launches(dataset: Dataset) -> list[dict]:
             group = {
                 "tag": tag, "year": year, "date": label, "sort": sort_key,
                 "launcher": "", "site": "", "pad": "", "agency": "",
-                "state": "", "objects": 0, "names": [], "owners": Counter(),
-                "_seen": set(),
+                "lv_codes": [], "sat_codes": [], "objects": 0, "names": [],
+                "owners": Counter(), "_seen": set(),
             }
             groups[tag] = group
 
@@ -234,8 +268,13 @@ def build_launches(dataset: Dataset) -> list[dict]:
             if not group[field]:
                 group[field] = cell(row, idx[column])
 
-        if not group["state"]:
-            group["state"] = cell(row, idx["LVState"])
+        # Le GCAT marque l'issue au niveau de chaque pièce : on collecte les
+        # codes du lanceur (LVState) et ceux des objets (SatState), puis on
+        # tranche une fois le lancement complet.
+        for column, bucket in (("LVState", "lv_codes"), ("SatState", "sat_codes")):
+            value = cell(row, idx[column])
+            if value and value not in group[bucket]:
+                group[bucket].append(value)
 
         owner = cell(row, idx["SatOwner"])
         if owner:
@@ -248,10 +287,12 @@ def build_launches(dataset: Dataset) -> list[dict]:
 
     launches: list[dict] = []
     for group in groups.values():
-        state = group.pop("state").strip()
+        lv_codes = group.pop("lv_codes")
+        sat_codes = group.pop("sat_codes")
         group.pop("_seen")
-        group["state"] = state
-        group["status"] = STATUS.get(state.upper(), "inconnu")
+        status = launch_outcome(lv_codes, sat_codes)
+        group["status"] = status
+        group["state"] = representative_code(lv_codes + sat_codes, status)
         launches.append(group)
 
     launches.sort(key=lambda item: (item["sort"], item["tag"]))
@@ -449,6 +490,20 @@ def build_highlights(launches: list[dict]) -> list[dict]:
     return highlights
 
 
+def report_codes(dataset: Dataset, column: str) -> None:
+    """Trace les codes bruts d'une colonne d'issue : rend lisible un éventuel
+    changement de vocabulaire côté GCAT."""
+    index = dataset.col(column)
+    if index < 0:
+        print(f"codes {column} : colonne absente")
+        return
+    counts = Counter(
+        value for value in (dataset.cell(row, index) for row in dataset.rows) if value
+    )
+    top = ", ".join(f"{code}={count}" for code, count in counts.most_common(8))
+    print(f"codes {column} : {top or 'aucune valeur'}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data", default="data/gcat", help="dossier des TSV GCAT")
@@ -471,6 +526,13 @@ def main() -> int:
     dataset = read_gcat_tsv(launchlog)
     launches = build_launches(dataset)
     stats = launch_stats(launches)
+
+    print(
+        f"statuts : succès {stats['successes']}, échec {stats['failures']}, "
+        f"inconnu {stats['unknown']}"
+    )
+    report_codes(dataset, "LVState")
+    report_codes(dataset, "SatState")
 
     manifest: dict = {}
     manifest_path = data_dir / "MANIFEST.json"
