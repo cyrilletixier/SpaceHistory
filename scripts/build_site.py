@@ -43,6 +43,11 @@ MONTHS = {
 # organisation, on ne les traduit donc pas.
 UNKNOWN_CODES = {"", "-", "?", "*", "UNK", "X"}
 
+# Colonnes de libellés des tables de référence (sites.tsv et orgs.tsv ont le
+# même jeu de colonnes).
+SHORT_COLUMNS = ("ShortName", "ShortEName")
+LONG_COLUMNS = ("Name", "EName", "UName")
+
 RANKINGS = [
     {
         "slug": "decennies",
@@ -86,7 +91,8 @@ RANKINGS = [
         "show_period": True,
         "limit": 120,
         "source_hint": "Les noms de sites viennent de <code>sites.tsv</code>, la table "
-                       "de référence du GCAT ; le code brut s'affiche au survol.",
+                       "de référence du GCAT ; le nom complet et le code brut "
+                       "s'affichent au survol.",
     },
     {
         "slug": "agences",
@@ -100,7 +106,8 @@ RANKINGS = [
         "show_period": True,
         "limit": 200,
         "source_hint": "Les noms d'organisations viennent de <code>orgs.tsv</code>, la "
-                       "table de référence du GCAT ; le code brut s'affiche au survol.",
+                       "table de référence du GCAT ; le nom complet et le code brut "
+                       "s'affichent au survol.",
     },
 ]
 
@@ -174,11 +181,13 @@ def read_gcat_tsv(path: Path) -> Dataset:
 # --------------------------------------------------------------------------- #
 
 
-def read_codebook(path: Path, code_column: str, *name_columns: str) -> dict[str, str]:
-    """Lit une table de référence GCAT et retourne code -> premier libellé non vide.
+def read_codebook(path: Path, code_column: str) -> dict[str, dict[str, str]]:
+    """Lit une table de référence GCAT : code -> {nom court, nom complet}.
 
-    Sert pour sites.tsv et orgs.tsv : c'est le GCAT lui-même qui nomme ses
-    entités, on ne réécrit donc aucun libellé à la main.
+    Sert pour sites.tsv et orgs.tsv, qui partagent le même jeu de colonnes de
+    libellés. C'est le GCAT lui-même qui nomme ses entités : aucun libellé n'est
+    réécrit à la main, ce qui garantit qu'une traduction reste vérifiable à la
+    source.
     """
     if not path.exists():
         return {}
@@ -188,19 +197,24 @@ def read_codebook(path: Path, code_column: str, *name_columns: str) -> dict[str,
     if code_at < 0:
         return {}
 
-    labels = [table.col(name) for name in name_columns]
-    labels = [index for index in labels if index >= 0]
+    short_at = [index for index in (table.col(name) for name in SHORT_COLUMNS) if index >= 0]
+    long_at = [index for index in (table.col(name) for name in LONG_COLUMNS) if index >= 0]
 
-    book: dict[str, str] = {}
+    def first(row: list[str], indexes: list[int]) -> str:
+        for index in indexes:
+            label = table.cell(row, index)
+            if label and label not in UNKNOWN_CODES:
+                return label
+        return ""
+
+    book: dict[str, dict[str, str]] = {}
     for row in table.rows:
         code = table.cell(row, code_at)
         if not code or not IDENT.match(code):
             continue
-        for index in labels:
-            label = table.cell(row, index)
-            if label and label not in UNKNOWN_CODES:
-                book.setdefault(code, label)
-                break
+        long = first(row, long_at)
+        short = first(row, short_at) or long or code
+        book.setdefault(code, {"short": short, "long": long})
     return book
 
 
@@ -213,33 +227,46 @@ class Translator:
     """
 
     def __init__(self, data_dir: Path):
-        self.sites = read_codebook(
-            data_dir / "sites.tsv", "Site", "ShortName", "ShortEName", "Name"
-        )
-        self.orgs = read_codebook(
-            data_dir / "orgs.tsv", "Code", "ShortName", "ShortEName", "Name"
-        )
+        self.sites = read_codebook(data_dir / "sites.tsv", "Site")
+        self.orgs = read_codebook(data_dir / "orgs.tsv", "Code")
         self.unknown_sites: Counter = Counter()
         self.unknown_orgs: Counter = Counter()
+
+    @staticmethod
+    def _entry(book: dict[str, dict[str, str]], raw: str) -> dict[str, str] | None:
+        """Entrée de la table de référence, avec repli sur le code sans « ? ».
+
+        Le GCAT suffixe certains codes d'un « ? » quand le rattachement est
+        douteux (TYSC?, KVR?). Le code connu reste alors la meilleure clé : on
+        préfère le nom assorti d'un point d'interrogation plutôt qu'un code nu.
+        """
+        entry = book.get(raw)
+        if entry is None and raw.endswith("?"):
+            entry = book.get(raw.rstrip("?"))
+        return entry
 
     def site(self, code: str) -> str:
         raw = (code or "").strip()
         if raw in UNKNOWN_CODES:
             return ""
-        label = self.sites.get(raw)
-        if label is None:
+        entry = self._entry(self.sites, raw)
+        if entry is None:
             self.unknown_sites[raw] += 1
             return raw
-        return label
+        return entry["short"]
+
+    def site_detail(self, code: str) -> str:
+        entry = self._entry(self.sites, (code or "").strip())
+        return entry["long"] if entry else ""
 
     def org(self, code: str) -> str:
         raw = (code or "").strip()
         if raw in UNKNOWN_CODES:
             return ""
 
-        label = self.orgs.get(raw)
-        if label is not None:
-            return label
+        entry = self._entry(self.orgs, raw)
+        if entry is not None:
+            return entry["short"]
 
         # Un code d'agence peut être composite (« NASA/USAF ») : on traduit
         # chaque composante séparément plutôt que de laisser un code brut.
@@ -250,13 +277,27 @@ class Translator:
         self.unknown_orgs[raw] += 1
         return raw
 
+    def org_detail(self, code: str) -> str:
+        raw = (code or "").strip()
+        if raw in UNKNOWN_CODES:
+            return ""
+
+        entry = self._entry(self.orgs, raw)
+        if entry is not None:
+            return entry["long"]
+
+        parts = [part.strip() for part in raw.split("/") if part.strip()]
+        if len(parts) > 1:
+            return " / ".join(self.org_detail(part) or part for part in parts)
+        return ""
+
     def report(self) -> None:
         """Trace la couverture des tables de référence, code par code."""
 
         def summary(counter: Counter) -> str:
             if not counter:
                 return "aucun"
-            top = ", ".join(f"{code}={count}" for code, count in counter.most_common(6))
+            top = ", ".join(f"{code}={count}" for code, count in counter.most_common(8))
             return f"{len(counter)} code(s) — {top}"
 
         print(f"libellés sites : {len(self.sites)} entrées ; non résolus : {summary(self.unknown_sites)}")
@@ -397,13 +438,19 @@ def build_launches(dataset: Dataset, translator: Translator | None = None) -> li
         codes = group.pop("codes")
         group.pop("_seen")
 
-        # On garde le code brut à côté du libellé : c'est lui qui reste
-        # vérifiable dans le GCAT, et c'est lui qu'on affiche au survol.
+        # On garde le code brut (et le nom complet GCAT) à côté du libellé :
+        # c'est ce qui reste vérifiable dans le catalogue, et c'est ce qu'on
+        # affiche au survol.
         group["site_code"] = group["site"]
         group["agency_code"] = group["agency"]
         if translator is not None:
             group["site"] = translator.site(group["site"])
+            group["site_detail"] = translator.site_detail(group["site_code"])
             group["agency"] = translator.org(group["agency"])
+            group["agency_detail"] = translator.org_detail(group["agency_code"])
+        else:
+            group["site_detail"] = ""
+            group["agency_detail"] = ""
 
         status = launch_outcome(codes)
         group["status"] = status
@@ -441,11 +488,13 @@ def aggregate(
     key_func,
     order: str = "attempts",
     code_func=None,
+    detail_func=None,
 ) -> list[dict]:
     """Agrège les lancements selon une clé, avec taux et part du total.
 
-    `code_func` collecte les codes GCAT d'origine d'une ligne agrégée : ils
-    servent d'infobulle, pour qu'un libellé traduit ne cache jamais sa source.
+    `code_func` et `detail_func` collectent les codes GCAT d'origine et les noms
+    complets d'une ligne agrégée : ils forment l'infobulle, pour qu'un libellé
+    traduit ne cache jamais sa source.
     """
     buckets: dict[str, dict] = {}
 
@@ -457,7 +506,8 @@ def aggregate(
         if bucket is None:
             bucket = {
                 "name": name, "attempts": 0, "successes": 0,
-                "failures": 0, "objects": 0, "years": [], "codes": set(),
+                "failures": 0, "objects": 0, "years": [],
+                "codes": set(), "details": [],
             }
             buckets[name] = bucket
         bucket["attempts"] += 1
@@ -472,6 +522,10 @@ def aggregate(
             code = (code_func(item) or "").strip()
             if code:
                 bucket["codes"].add(code)
+        if detail_func is not None:
+            detail = (detail_func(item) or "").strip()
+            if detail and detail not in bucket["details"]:
+                bucket["details"].append(detail)
 
     rows = list(buckets.values())
     for row in rows:
@@ -479,6 +533,14 @@ def aggregate(
         row["first"] = min(years) if years else None
         row["last"] = max(years) if years else None
         row["code"] = ", ".join(sorted(row.pop("codes")))
+        details = row.pop("details")[:3]
+        row["detail"] = " · ".join(details)
+        tip = []
+        if row["detail"]:
+            tip.append(f"GCAT : {row['detail']}")
+        if row["code"]:
+            tip.append(f"code {row['code']}")
+        row["tip"] = " · ".join(tip)
         known = row["successes"] + row["failures"]
         row["rate"] = (100 * row["successes"] / known) if known else None
 
@@ -559,13 +621,20 @@ def build_objects_view(
         owners.update(item["owners"])
 
     def describe(counter: Counter, limit: int) -> list[dict]:
-        """Code -> libellé, en gardant le code sous le coude pour l'infobulle."""
+        """Code -> libellé, en gardant code et nom complet pour l'infobulle."""
         rows = []
         for code, count in counter.most_common(limit):
+            detail = translator.org_detail(code) if translator else ""
+            tip = []
+            if detail:
+                tip.append(f"GCAT : {detail}")
+            tip.append(f"code {code}")
             rows.append(
                 {
                     "name": translator.org(code) if translator else code,
                     "code": code,
+                    "detail": detail,
+                    "tip": " · ".join(tip),
                     "count": count,
                 }
             )
@@ -633,8 +702,11 @@ def build_highlights(launches: list[dict]) -> list[dict]:
 
 
 def report_codes(dataset: Dataset, column: str) -> None:
-    """Trace les codes bruts d'une colonne d'issue : rend lisible un éventuel
-    changement de vocabulaire côté GCAT."""
+    """Trace le vocabulaire complet d'une colonne d'issue.
+
+    Un changement de codes côté GCAT doit se voir dans le journal du build, pas
+    dans les taux affichés : on liste donc toutes les valeurs distinctes.
+    """
     index = dataset.col(column)
     if index < 0:
         print(f"codes {column} : colonne absente")
@@ -642,8 +714,8 @@ def report_codes(dataset: Dataset, column: str) -> None:
     counts = Counter(
         value for value in (dataset.cell(row, index) for row in dataset.rows) if value
     )
-    top = ", ".join(f"{code}={count}" for code, count in counts.most_common(8))
-    print(f"codes {column} : {top or 'aucune valeur'}")
+    listed = ", ".join(f"{code}={count}" for code, count in counts.most_common(40))
+    print(f"codes {column} : {len(counts)} valeurs distinctes — {listed or 'aucune'}")
 
 
 def main() -> int:
@@ -728,18 +800,28 @@ def main() -> int:
         rankings=RANKINGS, **base,
     )
 
-    # Une page par classement : les libellés sont déjà humains, le code GCAT
-    # d'origine accompagne chaque ligne agrégée pour l'infobulle.
+    # Une page par classement : les libellés sont déjà humains, le nom complet
+    # et le code GCAT d'origine accompagnent chaque ligne agrégée (infobulle).
     keys = {
-        "decennies": (lambda item: decade_of(item["year"]), None),
-        "annees": (lambda item: str(item["year"]) if item["year"] else "", None),
-        "lanceurs": (lambda item: item["launcher"], None),
-        "sites": (lambda item: item["site"], lambda item: item["site_code"]),
-        "agences": (lambda item: item["agency"], lambda item: item["agency_code"]),
+        "decennies": {"key": lambda item: decade_of(item["year"])},
+        "annees": {"key": lambda item: str(item["year"]) if item["year"] else ""},
+        "lanceurs": {"key": lambda item: item["launcher"]},
+        "sites": {
+            "key": lambda item: item["site"],
+            "code": lambda item: item["site_code"],
+            "detail": lambda item: item["site_detail"],
+        },
+        "agences": {
+            "key": lambda item: item["agency"],
+            "code": lambda item: item["agency_code"],
+            "detail": lambda item: item["agency_detail"],
+        },
     }
     for ranking in RANKINGS:
-        key_func, code_func = keys[ranking["slug"]]
-        rows = aggregate(launches, key_func, ranking["order"], code_func)
+        spec = keys[ranking["slug"]]
+        rows = aggregate(
+            launches, spec["key"], ranking["order"], spec.get("code"), spec.get("detail")
+        )
         limit = ranking.get("limit")
         render(
             env, "rankings.html", out_dir / "classements" / f"{ranking['slug']}.html",
@@ -747,6 +829,13 @@ def main() -> int:
             active="rankings", rk=ranking, rows=rows[:limit] if limit else rows,
             hidden=max(0, len(rows) - (limit or len(rows))), **base,
         )
+
+        # Les libellés sont des traductions : le journal montre, pour les
+        # classements concernés, ce que chaque nom recouvre réellement.
+        if spec.get("detail"):
+            print(f"libellés {ranking['slug']} (10 premiers) :")
+            for row in rows[:10]:
+                print(f"  {row['name']} — {row['detail'] or 'sans nom long'} [{row['code']}]")
 
     # Explorateur : une entrée par lancement, colonnes utiles seulement.
     # `s` et `a` portent les libellés, `sc` et `ac` les codes GCAT d'origine.
@@ -797,9 +886,9 @@ def main() -> int:
     )
 
     size = sum(path.stat().st_size for path in out_dir.rglob("*") if path.is_file())
+    json_size = (out_dir / "data" / "launches.json").stat().st_size
     print(f"{stats['launches']} lancements, {stats['objects']} objets, {len(pages)} page(s)")
-    print(f"_site/ : {size / 1024:.0f} Ko")
-    print(f"explorateur : {len(payload['launches'])} entrées JSON")
+    print(f"_site/ : {size / 1024:.0f} Ko ; explorateur : {json_size / 1024:.0f} Ko")
     return 0
 
 
