@@ -1,0 +1,47 @@
+name: Diagnose GCAT
+
+# Génère un rapport Markdown sur les valeurs réellement présentes dans les TSV
+# (colonnes, codes d'issue) et le publie sur une branche dédiée.
+#
+# Pourquoi une branche et pas un artefact : le rapport doit être lisible dans le
+# dépôt, sans téléchargement ni droits particuliers.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diagnose-gcat.yml'
+      - 'scripts/diagnose_gcat.py'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: diagnose
+  cancel-in-progress: true
+
+jobs:
+  diagnose:
+    name: Rapport de colonnes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Generate report
+        run: python3 scripts/diagnose_gcat.py --data data/gcat --out diagnostics/gcat.md
+
+      - name: Publish report
+        run: |
+          git config user.name 'SpaceHistory bot'
+          git config user.email 'action@github.com'
+          git checkout -B diagnostic-gcat
+          git add diagnostics/gcat.md
+          git commit -m 'chore: rapport de diagnostic GCAT'
+          git push --force origin diagnostic-gcat
