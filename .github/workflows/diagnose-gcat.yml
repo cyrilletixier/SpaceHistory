@@ -1,10 +1,10 @@
 name: Diagnose GCAT
 
-# Génère un rapport Markdown sur les valeurs réellement présentes dans les TSV
-# (colonnes, codes d'issue) et le publie sur une branche dédiée.
-#
-# Pourquoi une branche et pas un artefact : le rapport doit être lisible dans le
-# dépôt, sans téléchargement ni droits particuliers.
+# Génère deux rapports Markdown sur les données réelles :
+#   - diagnostics/gcat.md  : colonnes et vocabulaire des codes d'issue ;
+#   - diagnostics/codes.md : inventaire des codes à traduire, avec leur poids.
+# Ils sont publiés sur une branche dédiée pour être lisibles dans le dépôt,
+# sans téléchargement ni droits particuliers.
 
 on:
   push:
@@ -12,6 +12,7 @@ on:
     paths:
       - '.github/workflows/diagnose-gcat.yml'
       - 'scripts/diagnose_gcat.py'
+      - 'scripts/diagnose_codes.py'
   workflow_dispatch:
 
 permissions:
@@ -23,7 +24,7 @@ concurrency:
 
 jobs:
   diagnose:
-    name: Rapport de colonnes
+    name: Rapports de vocabulaire
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -34,14 +35,16 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Generate report
-        run: python3 scripts/diagnose_gcat.py --data data/gcat --out diagnostics/gcat.md
+      - name: Generate reports
+        run: |
+          python3 scripts/diagnose_gcat.py --data data/gcat --out diagnostics/gcat.md
+          python3 scripts/diagnose_codes.py --data data/gcat --out diagnostics/codes.md
 
-      - name: Publish report
+      - name: Publish reports
         run: |
           git config user.name 'SpaceHistory bot'
           git config user.email 'action@github.com'
           git checkout -B diagnostic-gcat
-          git add diagnostics/gcat.md
-          git commit -m 'chore: rapport de diagnostic GCAT'
+          git add diagnostics
+          git commit -m 'chore: rapports de diagnostic GCAT'
           git push --force origin diagnostic-gcat
