@@ -90,7 +90,12 @@
       Statut dérivé du code <code>Launch_Code</code> du GCAT (<code>OS</code> = succès orbital,
       <code>OF</code> = échec orbital, <code>DS</code> = départ vers l'espace lointain) ; l'échec
       prime sur les autres pièces d'un même tir, et le code brut est affiché à côté.
-      Sites et agences sont nommés d'après <code>sites.tsv</code> et <code>orgs.tsv</code>,
+      {% if stats.unknown %}
+      Les {{ stats.unknown | int_fr }} lancements portant un autre code (<code>NS</code>,
+      <code>NF</code>, <code>XS</code>) restent en « inconnu » : ce ne sont pas des issues
+      orbitales, et les ranger d'autorité dans une colonne fausserait les taux.
+      {% endif %}
+      Sites, agences et pays sont nommés d'après <code>sites.tsv</code> et <code>orgs.tsv</code>,
       avec le code GCAT en infobulle.
       {{ source_rows | int_fr }} lignes brutes dans le fichier source, agrégées en
       {{ stats.launches | int_fr }} lancements.
