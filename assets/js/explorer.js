@@ -1,6 +1,7 @@
 /* Explorateur des lancements.
    Ne lit plus les TSV : data/launches.json contient une entrée par lancement,
-   déjà agrégée au build par Launch_Tag. Le navigateur ne filtre, trie et pagine. */
+   déjà agrégée au build par Launch_Tag. Le navigateur ne filtre, trie et pagine.
+   Les colonnes `s`/`a` portent des libellés lisibles, `sc`/`ac` les codes GCAT. */
 
 const fmt = new Intl.NumberFormat('fr-FR');
 
@@ -124,8 +125,8 @@ function render() {
       <td class="mono">${esc(item.d)}</td>
       <td>${esc(item.t)}</td>
       <td>${esc(item.lv) || '—'}</td>
-      <td>${esc(item.s) || '—'}</td>
-      <td class="dim">${esc(item.a) || '—'}</td>
+      <td${item.sc ? ` title="Code GCAT : ${esc(item.sc)}"` : ''}>${esc(item.s) || '—'}</td>
+      <td class="dim"${item.ac ? ` title="Code GCAT : ${esc(item.ac)}"` : ''}>${esc(item.a) || '—'}</td>
       <td class="num">${fmt.format(item.o)}</td>
       <td class="dim">${esc(item.n) || '—'}</td>
       <td>${esc(item.st)}${item.c ? ` <span class="mono dim">${esc(item.c)}</span>` : ''}</td>
