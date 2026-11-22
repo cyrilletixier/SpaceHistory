@@ -1,8 +1,10 @@
 name: Diagnose GCAT
 
-# Génère deux rapports Markdown sur les données réelles :
+# Génère trois rapports Markdown sur les données réelles :
 #   - diagnostics/gcat.md  : colonnes, vocabulaire et schémas de tous les fichiers ;
-#   - diagnostics/codes.md : inventaire des codes à traduire, avec leur poids.
+#   - diagnostics/codes.md : inventaire des codes à traduire, avec leur poids ;
+#   - diagnostics/build.md : le journal du build lui-même (statuts, couverture des
+#     libellés, poids des sorties), pour vérifier sans lire les logs Actions.
 # Ils sont publiés sur une branche dédiée pour être lisibles dans le dépôt,
 # sans téléchargement ni droits particuliers.
 
@@ -13,6 +15,8 @@ on:
       - '.github/workflows/diagnose-gcat.yml'
       - 'scripts/diagnose_gcat.py'
       - 'scripts/diagnose_codes.py'
+      - 'scripts/build_site.py'
+      - 'templates/**'
   workflow_dispatch:
 
 permissions:
@@ -42,10 +46,51 @@ jobs:
         run: python3 scripts/fetch_gcat.py --out data/gcat --only tables
         continue-on-error: true
 
+      - name: Install build dependencies
+        run: pip install -q -r requirements.txt
+
       - name: Generate reports
         run: |
           python3 scripts/diagnose_gcat.py --data data/gcat --out diagnostics/gcat.md
           python3 scripts/diagnose_codes.py --data data/gcat --out diagnostics/codes.md
+
+      # Le journal du build : c'est lui qui dit si les statuts et les libellés
+      # sont bien résolus sur les données du moment, et ce que pèse le site.
+      # Il ne s'arrête pas sur erreur : un traceback dans le rapport vaut mieux
+      # qu'un rapport muet.
+      - name: Build journal
+        run: |
+          mkdir -p diagnostics
+          {
+            echo '# Journal du build'
+            echo
+            echo 'Exécution de `scripts/build_site.py` sur les données du dépôt.'
+            echo
+            echo '```'
+            python3 scripts/build_site.py --data data/gcat --out _site 2>&1 || true
+            echo '```'
+            echo
+            echo '## Poids des sorties'
+            echo
+            echo '```'
+            du -sh _site 2>&1 || true
+            du -sh _site/data/launches.json 2>&1 || true
+            du -sh _site/classements/*.html 2>&1 || true
+            du -sh _site/assets/* 2>&1 || true
+            echo '```'
+            echo
+            echo '## Quelques lignes des classements'
+            echo
+            for slug in sites agences; do
+              echo "### \`classements/$slug.html\`"
+              echo
+              echo '```'
+              sed -n '/<tbody>/,/<\/tbody>/p' "_site/classements/$slug.html" 2>/dev/null \
+                | sed -e 's/<[^>]*>/ /g' -e 's/  */ /g' | head -40 || true
+              echo '```'
+              echo
+            done
+          } > diagnostics/build.md
 
       - name: Publish reports
         run: |
