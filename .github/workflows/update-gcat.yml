@@ -1,0 +1,57 @@
+name: Update GCAT data
+
+# Récupère les tables brutes du GCAT chaque semaine et les commit dans data/gcat/.
+on:
+  schedule:
+    # Tous les lundis à 05:17 UTC (heure décalée pour éviter la congestion de :00).
+    - cron: '17 5 * * 1'
+  workflow_dispatch:
+  push:
+    # Si le script change, on vérifie immédiatement qu'il fonctionne.
+    paths:
+      - 'scripts/fetch_gcat.py'
+      - '.github/workflows/update-gcat.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-gcat
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    name: Fetch GCAT raw data
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download GCAT tables
+        run: python scripts/fetch_gcat.py --out data/gcat
+
+      - name: Commit if changed
+        run: |
+          git config user.name 'SpaceHistory bot'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if [ -z "$(git status --porcelain -- data/gcat)" ]; then
+            echo 'Aucun changement : rien à committer.'
+            exit 0
+          fi
+          git add -- data/gcat
+          git commit -m "data: GCAT refresh $(date -u +%Y-%m-%d)"
+          git push
+
+      - name: Summary
+        if: always()
+        run: |
+          echo '### État de data/gcat' >> "$GITHUB_STEP_SUMMARY"
+          du -sh data/gcat 2>/dev/null >> "$GITHUB_STEP_SUMMARY" || true
+          ls -lh data/gcat 2>/dev/null >> "$GITHUB_STEP_SUMMARY" || true

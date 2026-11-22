@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# OS / éditeurs
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Les données GCAT de data/gcat/ sont versionnées volontairement.

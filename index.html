@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SpaceHistory — l'histoire spatiale en données</title>
+<meta name="description" content="Exploration de l'histoire spatiale à partir du General Catalog of Artificial Space Objects (GCAT) de Jonathan McDowell : lancements orbitaux et objets mis en orbite depuis 1957.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@300;400;500&display=swap">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="index.html"><span class="dot"></span>Space<span class="brand-thin">History</span></a>
+    <nav class="nav">
+      <a href="index.html" aria-current="page">Projet</a>
+      <a href="launches.html">Lancements</a>
+      <a href="objects.html">Objets</a>
+      <a href="https://planet4589.org/space/gcat/" target="_blank" rel="noopener">Source GCAT ↗</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <section class="hero">
+    <div class="wrap">
+      <p class="kicker">GCAT · 1957 → aujourd'hui</p>
+      <h1>L'histoire spatiale<br>en <em>données</em>.</h1>
+      <p class="lede">
+        Chaque tentative de lancement orbital depuis Spoutnik, chaque objet mis en orbite :
+        une base unique, brute et versionnée, pour construire des classements vérifiables.
+      </p>
+      <div class="hero-actions">
+        <a class="btn btn-solid" href="launches.html">Lancements →</a>
+        <a class="btn btn-ghost" href="objects.html">Objets mis en orbite →</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap section">
+    <div class="section-head">
+      <p class="kicker" style="margin:0">État de la base</p>
+    </div>
+    <div class="kpis">
+      <div class="kpi">
+        <span class="kpi-label">Journal des lancements</span>
+        <strong class="kpi-value" id="kpi-launchlog">—</strong>
+        <span class="kpi-note">objets lancés recensés</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-label">Charges utiles</span>
+        <strong class="kpi-value" id="kpi-psat">—</strong>
+        <span class="kpi-note">cataloguées depuis 1957</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-label">Catalogue complet</span>
+        <strong class="kpi-value" id="kpi-satcat">—</strong>
+        <span class="kpi-note">objets, débris compris</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-label">Dernière synchro</span>
+        <strong class="kpi-value" id="kpi-sync">—</strong>
+        <span class="kpi-note">mise à jour hebdomadaire</span>
+      </div>
+    </div>
+    <p class="note" id="manifest-note">Lecture du manifeste…</p>
+  </section>
+
+  <section class="wrap section">
+    <div class="section-head">
+      <p class="kicker" style="margin:0">Explorer</p>
+      <a class="mono dim" style="font-size:11px;letter-spacing:.14em" href="SOURCES.md">Méthode</a>
+    </div>
+    <div class="cards">
+      <a class="card" href="launches.html">
+        <span class="index">01 / Lancements</span>
+        <h2>Toutes les tentatives orbitales</h2>
+        <p>
+          Chronologie complète des tirs orbitaux depuis 1957, échecs compris.
+          Filtres par année, lanceur, site, statut ; une ligne = un lancement,
+          obtenu en agrégeant les objets par <em>Launch_Tag</em>.
+        </p>
+        <span class="go">Ouvrir →</span>
+      </a>
+      <a class="card" href="objects.html">
+        <span class="index">02 / Objets</span>
+        <h2>Les charges utiles en orbite</h2>
+        <p>
+          Chaque satellite, sonde ou module lancé, avec sa date de mise en orbite,
+          sa classe, sa catégorie et son programme. Filtres et pagination sur
+          l'ensemble du catalogue.
+        </p>
+        <span class="go">Ouvrir →</span>
+      </a>
+    </div>
+  </section>
+
+  <section class="wrap section">
+    <div class="section-head">
+      <p class="kicker" style="margin:0">Méthode</p>
+    </div>
+    <div class="cols">
+      <div>
+        <h3>Une seule source</h3>
+        <p>
+          Le GCAT de Jonathan McDowell, publié sous licence CC BY 4.0. Les fichiers
+          TSV bruts sont stockés tels quels dans <code>data/gcat/</code> et
+          resynchronisés chaque lundi par GitHub Actions.
+        </p>
+      </div>
+      <div>
+        <h3>Unité de compte explicite</h3>
+        <p>
+          Le journal des lancements contient une ligne par objet lancé, pas par
+          lancement. Le site agrège par <code>Launch_Tag</code> et affiche le nombre
+          d'objets à part : les deux palmarès restent distinguables.
+        </p>
+      </div>
+      <div>
+        <h3>Dates non inventées</h3>
+        <p>
+          Les dates du GCAT ne sont pas ISO et sont parfois vagues. L'affichage
+          conserve les composantes manquantes au lieu de les compléter arbitrairement.
+        </p>
+      </div>
+      <div>
+        <h3>Calcul côté navigateur</h3>
+        <p>
+          Les pages lisent directement les TSV : aucun agrégat figé à maintenir,
+          aucune dépendance, aucun build. Le dépôt reste la seule source de vérité.
+        </p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-foot">
+  <div class="wrap foot-grid">
+    <div>
+      <p>SpaceHistory — classements sur l'histoire spatiale</p>
+      <p>Données : <a href="https://planet4589.org/space/gcat/" target="_blank" rel="noopener">GCAT</a>, © Jonathan McDowell · CC BY 4.0</p>
+    </div>
+    <div>
+      <p>Synchronisation : <span id="sync-date">—</span></p>
+      <p><a href="https://github.com/cyrilletixier/SpaceHistory">Code source</a> · <a href="https://github.com/cyrilletixier/SpaceHistory/blob/main/SOURCES.md">Sources &amp; méthode</a></p>
+    </div>
+  </div>
+</footer>
+
+<script type="module" src="assets/js/home.js"></script>
+</body>
+</html>
