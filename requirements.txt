@@ -1,0 +1,3 @@
+# Dépendances du build du site (scripts/build_site.py).
+# Le script de récupération des données (scripts/fetch_gcat.py) reste en stdlib pure.
+Jinja2==3.1.4

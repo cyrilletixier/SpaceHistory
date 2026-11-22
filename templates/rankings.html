@@ -1,0 +1,57 @@
+{% extends "layout.html" %}
+{% block title %}{{ rk.title }} — SpaceHistory{% endblock %}
+{% block description %}{{ rk.sub }}{% endblock %}
+{% block content %}
+
+  <section class="wrap">
+    <div class="page-head">
+      <p class="kicker">Classement · {{ stats.launches | int_fr }} lancements</p>
+      <h1 class="page-title">{{ rk.title }}</h1>
+      <p class="page-sub">{{ rk.sub }}</p>
+    </div>
+
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>{{ rk.name_label }}</th>
+            <th class="num">Tentatives</th>
+            <th class="num">Part</th>
+            <th class="num">Succès</th>
+            <th class="num">Échecs</th>
+            <th class="num">Taux</th>
+            <th class="num">Objets</th>
+            {% if rk.show_period %}<th class="num">Période</th>{% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+          <tr>
+            <td>{{ row.name }}</td>
+            <td class="num">{{ row.attempts | int_fr }}</td>
+            <td class="num dim">{{ row.share | pct }}</td>
+            <td class="num">{{ row.successes | int_fr }}</td>
+            <td class="num">{{ row.failures | int_fr }}</td>
+            <td class="num">{{ row.rate | pct }}</td>
+            <td class="num">{{ row.objects | int_fr }}</td>
+            {% if rk.show_period %}
+            <td class="num dim">{% if row.first %}{{ row.first }}–{{ row.last }}{% else %}—{% endif %}</td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if hidden %}
+    <p class="note">{{ hidden | int_fr }} entrée(s) supplémentaire(s) non affichée(s) : classement tronqué aux {{ rows | length | int_fr }} premières.</p>
+    {% endif %}
+
+    <p class="note">
+      « Part » = part des tentatives dans le total des {{ stats.launches | int_fr }} lancements.
+      « Objets » = nombre d'objets lancés sur ces tentatives. Taux calculé sur les seules
+      issues connues. <a href="{{ root }}classements/index.html">Tous les classements</a>.
+    </p>
+  </section>
+
+{% endblock %}

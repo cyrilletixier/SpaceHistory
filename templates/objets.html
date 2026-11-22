@@ -1,0 +1,82 @@
+{% extends "layout.html" %}
+{% block title %}Objets mis en orbite — SpaceHistory{% endblock %}
+{% block description %}{{ stats.objects | int_fr }} objets mis en orbite depuis 1957, par décennie et par propriétaire, d'après le GCAT.{% endblock %}
+{% block content %}
+
+  <section class="wrap">
+    <div class="page-head">
+      <p class="kicker">Vue d'ensemble · <span class="mono">launchlog.tsv</span></p>
+      <h1 class="page-title">Objets mis en orbite</h1>
+      <p class="page-sub">
+        {{ stats.objects | int_fr }} objets recensés sur {{ stats.launches | int_fr }} lancements,
+        de {{ stats.first_year }} à {{ stats.last_year }}. Chaque ligne du journal est un objet :
+        c'est la maille la plus fine du GCAT pour la période orbitale.
+      </p>
+    </div>
+
+    <h2 class="page-title" style="font-size:1.5rem;margin-top:2rem">Par décennie</h2>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Décennie</th>
+            <th class="num">Lancements</th>
+            <th class="num">Objets</th>
+            <th class="num">Objets / lancement</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in objects.decades %}
+          <tr>
+            <td>{{ row.name }}</td>
+            <td class="num">{{ row.launches | int_fr }}</td>
+            <td class="num">{{ row.objects | int_fr }}</td>
+            <td class="num dim">{% if row.launches %}{{ (row.objects / row.launches) | round(2) }}{% else %}—{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <h2 class="page-title" style="font-size:1.5rem;margin-top:2rem">Principaux propriétaires</h2>
+    <p class="note">Champ <code>SatOwner</code> du GCAT, tel quel : les codes abrégés ne sont pas réécrits.</p>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr><th>Propriétaire (code GCAT)</th><th class="num">Objets</th></tr>
+        </thead>
+        <tbody>
+          {% for row in objects.owners %}
+          <tr><td class="mono">{{ row.name }}</td><td class="num">{{ row.count | int_fr }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if objects.active_owners %}
+    <h2 class="page-title" style="font-size:1.5rem;margin-top:2rem">Satellites encore actifs</h2>
+    <p class="note">
+      {{ objects.active_total | int_fr }} objets actifs d'après <code>active.tsv</code>,
+      répartis par propriétaire.
+    </p>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr><th>Propriétaire (code GCAT)</th><th class="num">Satellites actifs</th></tr>
+        </thead>
+        <tbody>
+          {% for row in objects.active_owners %}
+          <tr><td class="mono">{{ row.name }}</td><td class="num">{{ row.count | int_fr }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    <p class="note">
+      L'explorateur objet par objet (classe, catégorie, orbite) s'appuiera sur
+      <code>psatcat.tsv</code> et <code>satcat.tsv</code> : il reste à construire.
+    </p>
+  </section>
+
+{% endblock %}

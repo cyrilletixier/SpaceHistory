@@ -1,0 +1,144 @@
+{% extends "layout.html" %}
+{% block title %}SpaceHistory — l'histoire spatiale en données{% endblock %}
+{% block description %}Classements sur l'histoire spatiale bâtis sur le General Catalog of Artificial Space Objects (GCAT) : {{ stats.launches | int_fr }} tentatives de lancement orbital et {{ stats.objects | int_fr }} objets mis en orbite, {{ stats.period }}.{% endblock %}
+{% block content %}
+
+  <section class="hero">
+    <div class="wrap">
+      <p class="kicker">GCAT · {{ stats.period }}</p>
+      <h1>L'histoire spatiale<br>en <em>données</em>.</h1>
+      <p class="lede">
+        {{ stats.launches | int_fr }} tentatives de lancement orbital depuis Spoutnik,
+        {{ stats.objects | int_fr }} objets mis en orbite : une base unique, versionnée,
+        et des classements recalculés à chaque synchronisation.
+      </p>
+      <div class="hero-actions">
+        <a class="btn btn-solid" href="{{ root }}classements/index.html">Classements →</a>
+        <a class="btn btn-ghost" href="{{ root }}launches.html">Explorer les lancements →</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap section">
+    <div class="section-head">
+      <p class="kicker" style="margin:0">État de la base</p>
+    </div>
+    <div class="kpis">
+      <div class="kpi">
+        <span class="kpi-label">Lancements</span>
+        <strong class="kpi-value">{{ stats.launches | int_fr }}</strong>
+        <span class="kpi-note">tentatives orbitales, échecs compris</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-label">Succès</span>
+        <strong class="kpi-value">{{ stats.successes | int_fr }}</strong>
+        <span class="kpi-note">taux de réussite {{ stats.success_rate | pct }}</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-label">Échecs</span>
+        <strong class="kpi-value">{{ stats.failures | int_fr }}</strong>
+        <span class="kpi-note">{% if stats.unknown %}dont {{ stats.unknown | int_fr }} de statut inconnu{% else %}lancements perdus{% endif %}</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-label">Objets mis en orbite</span>
+        <strong class="kpi-value">{{ stats.objects | int_fr }}</strong>
+        <span class="kpi-note">toutes charges, débris exclus</span>
+      </div>
+    </div>
+    <p class="note">Dernière synchronisation des données : {{ sync_label }} · {{ source_rows | int_fr }} lignes brutes dans <code>launchlog.tsv</code>.</p>
+  </section>
+
+  <section class="wrap section">
+    <div class="section-head">
+      <p class="kicker" style="margin:0">Repères</p>
+    </div>
+    <div class="kpis">
+      {% for item in highlights %}
+      <div class="kpi">
+        <span class="kpi-label">{{ item.label }}</span>
+        <strong class="kpi-value" style="font-size:1.35rem">{{ item.value }}</strong>
+        <span class="kpi-note">{{ item.detail }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="wrap section">
+    <div class="section-head">
+      <p class="kicker" style="margin:0">Explorer</p>
+      <a class="mono dim" style="font-size:11px;letter-spacing:.14em" href="https://github.com/cyrilletixier/SpaceHistory/blob/main/SOURCES.md">Méthode</a>
+    </div>
+    <div class="cards">
+      <a class="card" href="{{ root }}classements/index.html">
+        <span class="index">01 / Classements</span>
+        <h2>Les palmarès pré-calculés</h2>
+        <p>
+          Décennies, années, lanceurs, sites, agences : chaque classement est une page
+          générée au build, avec ses tentatives, ses échecs, son taux de réussite et son
+          volume d'objets.
+        </p>
+        <span class="go">Ouvrir →</span>
+      </a>
+      <a class="card" href="{{ root }}launches.html">
+        <span class="index">02 / Lancements</span>
+        <h2>Toutes les tentatives orbitales</h2>
+        <p>
+          Chronologie complète des tirs orbitaux depuis 1957, échecs compris.
+          Filtres par année, lanceur, site et statut ; une ligne = un lancement,
+          obtenu en agrégeant les objets par <em>Launch_Tag</em>.
+        </p>
+        <span class="go">Ouvrir →</span>
+      </a>
+      <a class="card" href="{{ root }}objets.html">
+        <span class="index">03 / Objets</span>
+        <h2>Ce qui a été mis en orbite</h2>
+        <p>
+          Volume d'objets par décennie et principaux propriétaires, d'après le champ
+          <code>SatOwner</code> du GCAT, complété par le catalogue des satellites
+          encore actifs.
+        </p>
+        <span class="go">Ouvrir →</span>
+      </a>
+    </div>
+  </section>
+
+  <section class="wrap section">
+    <div class="section-head">
+      <p class="kicker" style="margin:0">Méthode</p>
+    </div>
+    <div class="cols">
+      <div>
+        <h3>Une seule source</h3>
+        <p>
+          Le GCAT de Jonathan McDowell, publié sous licence CC BY 4.0. Les fichiers
+          TSV bruts sont stockés tels quels dans <code>data/gcat/</code> et
+          resynchronisés chaque lundi par GitHub Actions.
+        </p>
+      </div>
+      <div>
+        <h3>Unité de compte explicite</h3>
+        <p>
+          Le journal des lancements contient une ligne par objet lancé, pas par
+          lancement. Les pages agrègent par <code>Launch_Tag</code> et affichent le
+          nombre d'objets à part : les deux palmarès restent distinguables.
+        </p>
+      </div>
+      <div>
+        <h3>Dates non inventées</h3>
+        <p>
+          Les dates du GCAT ne sont pas ISO et sont parfois vagues. L'affichage
+          conserve les composantes manquantes au lieu de les compléter arbitrairement.
+        </p>
+      </div>
+      <div>
+        <h3>Pré-calculé au build</h3>
+        <p>
+          Aucun agrégat n'est calculé dans le navigateur : un script Python rend les
+          pages finies, et l'explorateur ne reçoit qu'un JSON allégé. Une visite ne
+          télécharge jamais les 5 Mo du journal brut.
+        </p>
+      </div>
+    </div>
+  </section>
+
+{% endblock %}
