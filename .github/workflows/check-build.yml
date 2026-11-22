@@ -47,10 +47,15 @@ jobs:
             classements/lanceurs.html \
             classements/sites.html \
             classements/agences.html \
+            classements/pays.html \
             assets/css/style.css \
             assets/js/explorer.js ; do
             test -s "_site/$page" || { echo "fichier manquant ou vide : $page" ; exit 1 ; }
           done
+          # Garde-fou : un classement ajouté à RANKINGS sans page rendue, ou une
+          # page vidée par un template cassé, ne doit pas passer la CI.
+          expected=$(ls _site/classements/*.html | wc -l)
+          test "$expected" -ge 7 || { echo "pages de classement manquantes : $expected" ; exit 1 ; }
           echo "--- poids ---"
           du -sh _site
           du -h _site/data/launches.json
