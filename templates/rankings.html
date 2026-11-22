@@ -27,7 +27,7 @@
         <tbody>
           {% for row in rows %}
           <tr>
-            <td{% if row.code %} title="Code GCAT : {{ row.code }}"{% endif %}>{{ row.name }}</td>
+            <td{% if row.tip %} title="{{ row.tip }}"{% endif %}>{{ row.name }}</td>
             <td class="num">{{ row.attempts | int_fr }}</td>
             <td class="num dim">{{ row.share | pct }}</td>
             <td class="num">{{ row.successes | int_fr }}</td>
