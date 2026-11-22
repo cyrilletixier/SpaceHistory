@@ -1,0 +1,81 @@
+name: Deploy site
+
+# Publie le site statique sur GitHub Pages.
+#
+# Déclencheurs :
+#   - push sur main (code, HTML, CSS, JS) ;
+#   - fin du workflow « Update GCAT data » : indispensable car un commit poussé
+#     avec GITHUB_TOKEN ne déclenche pas les workflows « push » ;
+#   - lancement manuel.
+#
+# L'artefact publié ne contient que les fichiers servis (pas de .git, ni scripts).
+
+on:
+  push:
+    branches: [main]
+  workflow_run:
+    workflows: ['Update GCAT data']
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Build and publish
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+        with:
+          # Tente d'activer Pages (build_type: workflow) si ce n'est pas déjà fait.
+          enablement: true
+
+      - name: Stage static site
+        run: |
+          set -euo pipefail
+          rm -rf _site
+          mkdir -p _site
+          cp index.html launches.html objects.html _site/
+          cp -r assets _site/assets
+          cp -r data _site/data
+          touch _site/.nojekyll
+          printf 'User-agent: *\nAllow: /\n' > _site/robots.txt
+          echo '--- contenu publié ---'
+          du -sh _site
+          ls -la _site
+          ls -la _site/data/gcat | head -20
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+          retention-days: 1
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Summary
+        if: always()
+        run: |
+          echo '### Publication GitHub Pages' >> "$GITHUB_STEP_SUMMARY"
+          echo "- URL : ${{ steps.deployment.outputs.page_url }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Déclencheur : \`${{ github.event_name }}\`" >> "$GITHUB_STEP_SUMMARY"
