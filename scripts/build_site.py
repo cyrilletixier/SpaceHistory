@@ -197,23 +197,26 @@ def parse_date(raw: str) -> tuple[int | None, str, str]:
     return year, label, key
 
 
-def launch_outcome(lv_codes: list[str], sat_codes: list[str]) -> str:
+def launch_outcome(codes: list[str]) -> str:
     """Qualifie un lancement d'après les codes d'issue de ses pièces.
 
-    L'échec prime : un seul code « OF » suffit à qualifier le lancement, même
-    si d'autres pièces sont marquées « OS ». La comparaison se fait par préfixe
-    parce que le GCAT décline ces codes (« OS », « O », « OF »…).
-    """
-    lv = [code.upper() for code in lv_codes]
-    sat = [code.upper() for code in sat_codes]
+    Le GCAT range l'issue dans `Launch_Code` : une lettre de destination suivie
+    d'une lettre d'issue. `OS` = mise en orbite réussie, `OF` = échec orbital,
+    `DS` = départ vers l'espace lointain réussi. Le code est parfois suffixé
+    (`OF40`, `OS89`), d'où la comparaison par préfixe.
 
-    if any(code.startswith("OF") for code in lv):
+    L'échec prime : un seul « OF » suffit à qualifier le lancement, même si
+    d'autres pièces portent « OS » — un lancement qui perd sa charge utile
+    reste un échec.
+
+    Attention au piège de vocabulaire : dans ce fichier, `LVState` et `SatState`
+    ne sont *pas* des codes d'issue mais des codes de **pays** (US, SU, CN…).
+    """
+    upper = [code.upper() for code in codes]
+
+    if any(code.startswith("OF") for code in upper):
         return "échec"
-    if any(code.startswith("OS") for code in lv):
-        return "succès"
-    if any(code.startswith("OF") for code in sat):
-        return "échec"
-    if any(code.startswith("O") for code in sat):
+    if any(code.startswith(("OS", "DS")) for code in upper):
         return "succès"
     return "inconnu"
 
@@ -226,7 +229,7 @@ def representative_code(codes: list[str], status: str) -> str:
                 return code
     elif status == "succès":
         for code in codes:
-            if code.upper().startswith("O"):
+            if code.upper().startswith(("OS", "DS")):
                 return code
     return codes[0] if codes else ""
 
@@ -237,8 +240,7 @@ def build_launches(dataset: Dataset) -> list[dict]:
         name: dataset.col(name)
         for name in (
             "Launch_Tag", "Launch_Date", "PLName", "Name", "LV_Type",
-            "Launch_Site", "Launch_Pad", "Agency", "LVState", "SatState",
-            "SatOwner",
+            "Launch_Site", "Launch_Pad", "Agency", "Launch_Code", "SatOwner",
         )
     }
     cell = dataset.cell
@@ -252,8 +254,8 @@ def build_launches(dataset: Dataset) -> list[dict]:
             group = {
                 "tag": tag, "year": year, "date": label, "sort": sort_key,
                 "launcher": "", "site": "", "pad": "", "agency": "",
-                "lv_codes": [], "sat_codes": [], "objects": 0, "names": [],
-                "owners": Counter(), "_seen": set(),
+                "codes": [], "objects": 0, "names": [], "owners": Counter(),
+                "_seen": set(),
             }
             groups[tag] = group
 
@@ -268,13 +270,11 @@ def build_launches(dataset: Dataset) -> list[dict]:
             if not group[field]:
                 group[field] = cell(row, idx[column])
 
-        # Le GCAT marque l'issue au niveau de chaque pièce : on collecte les
-        # codes du lanceur (LVState) et ceux des objets (SatState), puis on
-        # tranche une fois le lancement complet.
-        for column, bucket in (("LVState", "lv_codes"), ("SatState", "sat_codes")):
-            value = cell(row, idx[column])
-            if value and value not in group[bucket]:
-                group[bucket].append(value)
+        # L'issue est portée par chaque pièce : on collecte les codes du
+        # lancement, puis on tranche une fois le lancement complet.
+        code = cell(row, idx["Launch_Code"])
+        if code and code not in group["codes"]:
+            group["codes"].append(code)
 
         owner = cell(row, idx["SatOwner"])
         if owner:
@@ -287,12 +287,11 @@ def build_launches(dataset: Dataset) -> list[dict]:
 
     launches: list[dict] = []
     for group in groups.values():
-        lv_codes = group.pop("lv_codes")
-        sat_codes = group.pop("sat_codes")
+        codes = group.pop("codes")
         group.pop("_seen")
-        status = launch_outcome(lv_codes, sat_codes)
+        status = launch_outcome(codes)
         group["status"] = status
-        group["state"] = representative_code(lv_codes + sat_codes, status)
+        group["state"] = representative_code(codes, status)
         launches.append(group)
 
     launches.sort(key=lambda item: (item["sort"], item["tag"]))
@@ -531,8 +530,7 @@ def main() -> int:
         f"statuts : succès {stats['successes']}, échec {stats['failures']}, "
         f"inconnu {stats['unknown']}"
     )
-    report_codes(dataset, "LVState")
-    report_codes(dataset, "SatState")
+    report_codes(dataset, "Launch_Code")
 
     manifest: dict = {}
     manifest_path = data_dir / "MANIFEST.json"
