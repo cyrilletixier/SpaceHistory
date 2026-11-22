@@ -5,6 +5,7 @@ Aucune dépendance externe (stdlib uniquement).
 
     python3 scripts/fetch_gcat.py --out data/gcat
     python3 scripts/fetch_gcat.py --out data/gcat --check
+    python3 scripts/fetch_gcat.py --out data/gcat --only tables
 
 Les fichiers ne sont réécrits que si leur empreinte SHA-256 a changé ;
 MANIFEST.json n'est réécrit que si les données ont réellement évolué, afin que
@@ -34,6 +35,11 @@ FILES: list[tuple[str, str]] = [
     ("cat/psatcat.tsv", "Catalogue des charges utiles"),
     ("cat/ftocat.tsv", "Catalogue des échecs de mise en orbite"),
     ("cat/deepcat.tsv", "Catalogue de l'espace lointain"),
+    # Tables de référence : elles traduisent les codes employés par le reste du
+    # catalogue (agences, sites, pas de tir) en noms lisibles.
+    ("tables/orgs.tsv", "Organisations : code d'agence ou de propriétaire → nom"),
+    ("tables/sites.tsv", "Sites de lancement : code → nom et coordonnées"),
+    ("tables/lp.tsv", "Pas de tir : code → nom et site de rattachement"),
 ]
 
 USER_AGENT = "SpaceHistory-gcat-fetcher/1.0 (+https://github.com/cyrilletixier/SpaceHistory)"
@@ -82,11 +88,25 @@ def inspect(data: bytes) -> tuple[int, int]:
     return rows, columns
 
 
+def selected_files(only: str) -> list[tuple[str, str]]:
+    """Filtre FILES sur des fragments de chemin (« tables », « orgs »…)."""
+    tokens = [token.strip() for token in only.split(",") if token.strip()]
+    if not tokens:
+        return FILES
+    return [entry for entry in FILES if any(token in entry[0] for token in tokens)]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", default="data/gcat", help="dossier de destination")
     parser.add_argument(
         "--check", action="store_true", help="télécharge et compare sans rien écrire"
+    )
+    parser.add_argument(
+        "--only",
+        default="",
+        help="ne récupérer que les fichiers dont le chemin contient un de ces "
+             "fragments (séparés par des virgules), ex. : --only tables",
     )
     args = parser.parse_args()
 
@@ -96,7 +116,7 @@ def main() -> int:
     entries: list[dict] = []
     updated = 0
 
-    for relpath, description in FILES:
+    for relpath, description in selected_files(args.only):
         url = f"{BASE}/{relpath}"
         name = Path(relpath).name
         target = out / name

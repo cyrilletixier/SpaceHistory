@@ -1,7 +1,7 @@
 name: Diagnose GCAT
 
 # Génère deux rapports Markdown sur les données réelles :
-#   - diagnostics/gcat.md  : colonnes et vocabulaire des codes d'issue ;
+#   - diagnostics/gcat.md  : colonnes, vocabulaire et schémas de tous les fichiers ;
 #   - diagnostics/codes.md : inventaire des codes à traduire, avec leur poids.
 # Ils sont publiés sur une branche dédiée pour être lisibles dans le dépôt,
 # sans téléchargement ni droits particuliers.
@@ -34,6 +34,13 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
+      # Les tables de référence (orgs, sites, lp) arrivent par le workflow
+      # « Update GCAT data » ; on les récupère ici aussi pour que le rapport
+      # soit complet même si ce dernier n'a pas encore tourné.
+      - name: Fetch reference tables
+        run: python3 scripts/fetch_gcat.py --out data/gcat --only tables
+        continue-on-error: true
 
       - name: Generate reports
         run: |

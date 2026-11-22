@@ -68,6 +68,29 @@ def shorten(value: str, limit: int = 22) -> str:
     return value if len(value) <= limit else value[: limit - 1] + "…"
 
 
+def head_of(path: Path) -> list[str]:
+    """Schéma d'un fichier : colonnes, volumétrie, premières lignes.
+
+    Section générique : elle couvre aussi les tables de référence qui viennent
+    s'ajouter aux fichiers catalogues (orgs, sites, lp).
+    """
+    columns, rows, _ = read_tsv(path)
+    out = [f"### `{path.name}`", ""]
+
+    if columns is None:
+        out.append("*en-tête introuvable*")
+        out.append("")
+        return out
+
+    out.append(f"- colonnes ({len(columns)}) : " + ", ".join(f"`{name}`" for name in columns))
+    out.append(f"- lignes de données : {len(rows)}")
+    out.append("")
+    for row in rows[:3]:
+        out.append("- " + " · ".join(shorten(cell, 26) for cell in row))
+    out.append("")
+    return out
+
+
 def describe(path: Path, limit: int, sample_lines: bool) -> list[str]:
     out: list[str] = []
     columns, rows, raw = read_tsv(path)
@@ -211,6 +234,10 @@ def main() -> int:
         path = data_dir / name
         if path.exists():
             report += describe(path, limit=4, sample_lines=False)
+
+    report += ["## Schémas de tous les fichiers", ""]
+    for path in sorted(data_dir.glob("*.tsv")):
+        report += head_of(path)
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text("\n".join(report) + "\n", encoding="utf-8")
