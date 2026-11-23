@@ -37,10 +37,12 @@ jobs:
           for page in \
             index.html \
             launches.html \
+            charges-utiles.html \
             objets.html \
             sitemap.xml \
             robots.txt \
             data/launches.json \
+            data/charges-utiles.json \
             classements/index.html \
             classements/decennies.html \
             classements/annees.html \
@@ -49,7 +51,8 @@ jobs:
             classements/agences.html \
             classements/pays.html \
             assets/css/style.css \
-            assets/js/explorer.js ; do
+            assets/js/explorer.js \
+            assets/js/charges-utiles.js ; do
             test -s "_site/$page" || { echo "fichier manquant ou vide : $page" ; exit 1 ; }
           done
           # Garde-fou : un classement ajouté à RANKINGS sans page rendue, ou une
@@ -58,7 +61,56 @@ jobs:
           test "$expected" -ge 7 || { echo "pages de classement manquantes : $expected" ; exit 1 ; }
           echo "--- poids ---"
           du -sh _site
-          du -h _site/data/launches.json
+          du -h _site/data/launches.json _site/data/charges-utiles.json
+
+      - name: Check payload fields
+        run: |
+          # Les colonnes « masse en orbite » et « destination » sont calculées au
+          # build : si la jointure launchlog → satcat casse (colonne renommée,
+          # fichier absent), le site publierait des colonnes vides sans que rien
+          # ne signale l'erreur. On vérifie donc que les deux champs sont
+          # réellement renseignés, et on refuse un _site/ silencieusement vide.
+          python3 - <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          launches = json.loads(Path("_site/data/launches.json").read_text(encoding="utf-8"))["launches"]
+          payloads = json.loads(Path("_site/data/charges-utiles.json").read_text(encoding="utf-8"))["payloads"]
+
+          total = len(launches)
+          with_payloads = sum(1 for item in launches if item.get("pc"))
+          with_mass = sum(1 for item in launches if item.get("m"))
+          with_destination = sum(1 for item in launches if item.get("dd"))
+          known_mass = sum(item.get("m") or 0 for item in launches)
+
+          print(f"lancements : {total}")
+          print(f"  avec charges utiles : {with_payloads} ({100 * with_payloads / total:.1f} %)")
+          print(f"  avec masse connue   : {with_mass} ({100 * with_mass / total:.1f} %)")
+          print(f"  avec destination    : {with_destination} ({100 * with_destination / total:.1f} %)")
+          print(f"  masse cumulée       : {known_mass / 1000:.0f} t")
+          print(f"charges utiles : {len(payloads)}")
+
+          failures = []
+          if not payloads:
+              failures.append("aucune charge utile lue (satcat.tsv / ftocat.tsv ?)")
+          if total and with_destination / total < 0.5:
+              failures.append(f"destination renseignée sur seulement {with_destination}/{total} lancements")
+          if total and with_mass / total < 0.3:
+              failures.append(f"masse renseignée sur seulement {with_mass}/{total} lancements")
+
+          # Un vol avec des charges utiles doit avoir une destination lisible.
+          orphan = [item["t"] for item in launches if item.get("pi") and not item.get("dd")]
+          if orphan:
+              print(f"vols avec charges utiles mais sans destination ({len(orphan)}) : "
+                    + ", ".join(orphan[:10]))
+              failures.append(f"{len(orphan)} vol(s) sans destination malgré des charges utiles")
+
+          if failures:
+              for failure in failures:
+                  print(f"::error::{failure}")
+              sys.exit(1)
+          PY
 
       - name: Upload preview
         uses: actions/upload-artifact@v4
