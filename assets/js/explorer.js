@@ -1,12 +1,16 @@
 /* Explorateur des lancements.
    Ne lit plus les TSV : data/launches.json contient une entrée par lancement,
    déjà agrégée au build par Launch_Tag. Le navigateur ne filtre, trie et pagine.
-   Les colonnes `s`/`a` portent des libellés lisibles, `sc`/`ac` les codes GCAT. */
+   Les colonnes `s`/`a` portent des libellés lisibles, `sc`/`ac` les codes GCAT,
+   `dc` les codes d'orbite bruts derrière le libellé de destination `dd`.
+
+   La colonne « charges utiles » ne liste plus les noms (ils restent dans `n`,
+   pour la recherche) : elle renvoie vers charges-utiles.html?vol=<tag>. */
 
 const fmt = new Intl.NumberFormat('fr-FR');
 
 const state = {
-  q: '', yMin: null, yMax: null, launcher: '', site: '',
+  q: '', yMin: null, yMax: null, launcher: '', site: '', destination: '',
   status: '', sort: 'date', dir: -1, page: 1, pageSize: 50,
 };
 
@@ -19,6 +23,9 @@ const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
 }[char]));
 
+/* Familles d'orbite d'un lancement : `dd` peut en contenir plusieurs. */
+const destinationsOf = (item) => (item.dd || '').split(' · ').filter(Boolean);
+
 function sortValue(item, key) {
   switch (key) {
     case 'tag': return item.t.toLowerCase();
@@ -26,6 +33,9 @@ function sortValue(item, key) {
     case 'site': return (item.s || '').toLowerCase();
     case 'agency': return (item.a || '').toLowerCase();
     case 'objects': return item.o;
+    case 'payloads': return item.pc || 0;
+    case 'mass': return item.m || -1;
+    case 'destination': return (item.dd || '').toLowerCase();
     case 'status': return item.st;
     default: return item.k;
   }
@@ -36,6 +46,7 @@ function matches(item) {
   if (state.yMax && (!item.y || item.y > state.yMax)) return false;
   if (state.site && item.s !== state.site) return false;
   if (state.status && item.st !== state.status) return false;
+  if (state.destination && !destinationsOf(item).includes(state.destination)) return false;
 
   if (state.launcher) {
     const needle = state.launcher.trim().toLowerCase();
@@ -115,6 +126,36 @@ function renderPager() {
   add('›', state.page + 1, { disabled: state.page >= pages });
 }
 
+/* Cellule « charges utiles » : compteur cliquable vers la page filtrée.
+   Le survol rappelle combien de charges sont cataloguées en orbite. */
+function payloadCell(item) {
+  if (!item.pc) return '<span class="dim">—</span>';
+
+  const url = `charges-utiles.html?vol=${encodeURIComponent(item.t)}`;
+  const tip = item.pi && item.pi !== item.pc
+    ? `${fmt.format(item.pi)} en orbite sur ${fmt.format(item.pc)} cataloguée(s) — voir le détail`
+    : `${fmt.format(item.pc)} charge(s) utile(s) — voir le détail`;
+
+  return `<a class="pill" href="${url}" title="${esc(tip)}">${fmt.format(item.pc)}</a>`;
+}
+
+/* Cellule « masse en orbite » : une somme inconnue s'affiche « — », pas « 0 ». */
+function massCell(item) {
+  if (!item.m) return '<span class="dim">—</span>';
+
+  const missing = (item.pi || 0) - (item.pm || 0);
+  const tip = `somme des masses connues de ${fmt.format(item.pm || 0)} charge(s) utile(s)`
+    + (missing > 0 ? ` ; ${fmt.format(missing)} sans masse au catalogue` : '');
+
+  return `<span title="${esc(tip)}">${fmt.format(item.m)}\u00a0kg</span>`;
+}
+
+function destinationCell(item) {
+  if (!item.dd) return '<span class="dim">—</span>';
+  const tip = item.dc ? `codes GCAT : ${item.dc}` : '';
+  return `<span${tip ? ` title="${esc(tip)}"` : ''}>${esc(item.dd)}</span>`;
+}
+
 function render() {
   const tbody = $('tbody');
   const start = (state.page - 1) * state.pageSize;
@@ -128,7 +169,9 @@ function render() {
       <td${item.sc ? ` title="Code GCAT : ${esc(item.sc)}"` : ''}>${esc(item.s) || '—'}</td>
       <td class="dim"${item.ac ? ` title="Code GCAT : ${esc(item.ac)}"` : ''}>${esc(item.a) || '—'}</td>
       <td class="num">${fmt.format(item.o)}</td>
-      <td class="dim">${esc(item.n) || '—'}</td>
+      <td class="num">${payloadCell(item)}</td>
+      <td class="num">${massCell(item)}</td>
+      <td>${destinationCell(item)}</td>
       <td>${esc(item.st)}${item.c ? ` <span class="mono dim">${esc(item.c)}</span>` : ''}</td>
     </tr>`).join('');
 
@@ -164,6 +207,13 @@ function fillControls() {
     .sort((a, b) => a.localeCompare(b, 'fr'));
   const select = $('f-site');
   for (const site of sites) select.append(new Option(site, site));
+
+  const destinations = [...new Set(launches.flatMap(destinationsOf))]
+    .sort((a, b) => a.localeCompare(b, 'fr'));
+  const destinationSelect = $('f-destination');
+  for (const destination of destinations) {
+    destinationSelect.append(new Option(destination, destination));
+  }
 }
 
 function bind() {
@@ -197,6 +247,12 @@ function bind() {
     apply();
   });
 
+  $('f-destination').addEventListener('change', (event) => {
+    state.destination = event.target.value;
+    state.page = 1;
+    apply();
+  });
+
   $('f-status').addEventListener('change', (event) => {
     state.status = event.target.value;
     state.page = 1;
@@ -211,13 +267,15 @@ function bind() {
 
   $('f-reset').addEventListener('click', () => {
     Object.assign(state, {
-      q: '', yMin: null, yMax: null, launcher: '', site: '', status: '', page: 1,
+      q: '', yMin: null, yMax: null, launcher: '', site: '', destination: '',
+      status: '', page: 1,
     });
     $('f-query').value = '';
     $('f-year-min').value = '';
     $('f-year-max').value = '';
     $('f-launcher').value = '';
     $('f-site').value = '';
+    $('f-destination').value = '';
     $('f-status').value = '';
     apply();
   });
@@ -228,7 +286,7 @@ function bind() {
       if (state.sort === key) state.dir = -state.dir;
       else {
         state.sort = key;
-        state.dir = key === 'objects' ? -1 : (key === 'date' ? -1 : 1);
+        state.dir = ['objects', 'payloads', 'mass', 'date'].includes(key) ? -1 : 1;
       }
       state.page = 1;
       apply();
