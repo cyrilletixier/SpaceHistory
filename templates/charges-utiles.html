@@ -1,6 +1,6 @@
 {% extends "layout.html" %}
 {% block title %}Charges utiles — SpaceHistory{% endblock %}
-{% block description %}Les {{ stats.payloads | int_fr }} charges utiles recensées par le GCAT, avec leur masse, leur destination et leur vol — filtrables par lancement.{% endblock %}
+{% block description %}Les {{ stats.payloads | int_fr }} charges utiles recensées par le GCAT, avec leur masse, leur destination et leur vol — filtrables par lancement et par vol habité.{% endblock %}
 {% block content %}
 
   <section class="wrap">
@@ -37,6 +37,14 @@
       <label class="field">
         <span>Année max</span>
         <input id="f-year-max" type="number" min="1957" max="2100" placeholder="aujourd'hui" inputmode="numeric">
+      </label>
+      <label class="field">
+        <span>Équipage</span>
+        <select id="f-crewed">
+          <option value="">tous</option>
+          <option value="1">vol habité</option>
+          <option value="0">vol sans équipage</option>
+        </select>
       </label>
       <label class="field">
         <span>Statut</span>
@@ -93,6 +101,15 @@
       utiles elle porte.
       Destination : famille d'orbite déduite de <code>OpOrbit</code>, le code brut restant
       accessible au survol. Propriétaires nommés d'après <code>orgs.tsv</code>.
+    </p>
+
+    <p class="note">
+      <strong>Vol habité</strong> : déduit du champ <code>Type</code> du GCAT, dont le
+      <em>2e</em> caractère vaut <code>H</code> quand le vol emportait un équipage. Le
+      <em>4e</em> caractère <code>H</code>, lui, ne dit qu'une chose : le véhicule est
+      habitable — Shenzhou 1 à 4 et Crew Dragon Demo-1 le portent sans avoir volé avec
+      personne. La pastille marque donc le vol, pas le véhicule, et le code
+      <code>Type</code> complet reste visible au survol du nom.
     </p>
   </section>
 

@@ -5,13 +5,17 @@
    `dc` les codes d'orbite bruts derrière le libellé de destination `dd`.
 
    La colonne « charges utiles » ne liste plus les noms (ils restent dans `n`,
-   pour la recherche) : elle renvoie vers charges-utiles.html?vol=<tag>. */
+   pour la recherche) : elle renvoie vers charges-utiles.html?vol=<tag>.
+
+   `cr` vaut 1 pour un vol habité. Le marqueur vient du GCAT (2e caractère du
+   champ `Type` des charges utiles), pas d'une liste tenue à la main : le build
+   l'a déjà agrégé au vol, le navigateur se contente de filtrer et d'afficher. */
 
 const fmt = new Intl.NumberFormat('fr-FR');
 
 const state = {
   q: '', yMin: null, yMax: null, launcher: '', site: '', destination: '',
-  status: '', sort: 'date', dir: -1, page: 1, pageSize: 50,
+  crewed: '', status: '', sort: 'date', dir: -1, page: 1, pageSize: 50,
 };
 
 let launches = [];
@@ -36,6 +40,7 @@ function sortValue(item, key) {
     case 'payloads': return item.pc || 0;
     case 'mass': return item.m || -1;
     case 'destination': return (item.dd || '').toLowerCase();
+    case 'crewed': return item.cr || 0;
     case 'status': return item.st;
     default: return item.k;
   }
@@ -47,6 +52,8 @@ function matches(item) {
   if (state.site && item.s !== state.site) return false;
   if (state.status && item.st !== state.status) return false;
   if (state.destination && !destinationsOf(item).includes(state.destination)) return false;
+  if (state.crewed === '1' && !item.cr) return false;
+  if (state.crewed === '0' && item.cr) return false;
 
   if (state.launcher) {
     const needle = state.launcher.trim().toLowerCase();
@@ -126,6 +133,15 @@ function renderPager() {
   add('›', state.page + 1, { disabled: state.page >= pages });
 }
 
+/* Pastille d'équipage, affichée à côté du tag de mission.
+   Le survol rappelle d'où vient le marqueur : il est lu dans le catalogue, pas
+   saisi à la main — la règle reste donc vérifiable à la source. */
+function crewBadge(item) {
+  if (!item.cr) return '';
+  const tip = 'Vol habité — GCAT : 2e caractère du champ Type des charges utiles';
+  return ` <span class="pill" title="${esc(tip)}">habité</span>`;
+}
+
 /* Cellule « charges utiles » : compteur cliquable vers la page filtrée.
    Le survol rappelle combien de charges sont cataloguées en orbite. */
 function payloadCell(item) {
@@ -164,7 +180,7 @@ function render() {
   tbody.innerHTML = slice.map((item) => `
     <tr>
       <td class="mono">${esc(item.d)}</td>
-      <td>${esc(item.t)}</td>
+      <td>${esc(item.t)}${crewBadge(item)}</td>
       <td>${esc(item.lv) || '—'}</td>
       <td${item.sc ? ` title="Code GCAT : ${esc(item.sc)}"` : ''}>${esc(item.s) || '—'}</td>
       <td class="dim"${item.ac ? ` title="Code GCAT : ${esc(item.ac)}"` : ''}>${esc(item.a) || '—'}</td>
@@ -253,6 +269,12 @@ function bind() {
     apply();
   });
 
+  $('f-crewed').addEventListener('change', (event) => {
+    state.crewed = event.target.value;
+    state.page = 1;
+    apply();
+  });
+
   $('f-status').addEventListener('change', (event) => {
     state.status = event.target.value;
     state.page = 1;
@@ -268,7 +290,7 @@ function bind() {
   $('f-reset').addEventListener('click', () => {
     Object.assign(state, {
       q: '', yMin: null, yMax: null, launcher: '', site: '', destination: '',
-      status: '', page: 1,
+      crewed: '', status: '', page: 1,
     });
     $('f-query').value = '';
     $('f-year-min').value = '';
@@ -276,6 +298,7 @@ function bind() {
     $('f-launcher').value = '';
     $('f-site').value = '';
     $('f-destination').value = '';
+    $('f-crewed').value = '';
     $('f-status').value = '';
     apply();
   });
@@ -286,7 +309,7 @@ function bind() {
       if (state.sort === key) state.dir = -state.dir;
       else {
         state.sort = key;
-        state.dir = ['objects', 'payloads', 'mass', 'date'].includes(key) ? -1 : 1;
+        state.dir = ['objects', 'payloads', 'mass', 'date', 'crewed'].includes(key) ? -1 : 1;
       }
       state.page = 1;
       apply();

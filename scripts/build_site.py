@@ -13,10 +13,11 @@ sites.tsv et orgs.tsv ; les codes d'origine restent disponibles (infobulle,
 JSON, journal du build) pour que rien ne devienne invérifiable.
 
 Les charges utiles (`satcat.tsv`, complété par `ftocat.tsv` pour les échecs)
-fournissent les deux colonnes ajoutées à l'explorateur : la **masse en orbite**
-(somme des `Mass` des charges utiles réellement cataloguées en orbite) et la
-**destination** (famille d'orbite déduite de `OpOrbit`). Ce sont elles aussi qui
-alimentent `charges-utiles.html`, la page vers laquelle pointe chaque vol.
+fournissent les colonnes ajoutées à l'explorateur : la **masse en orbite**
+(somme des `Mass` des charges utiles réellement cataloguées en orbite), la
+**destination** (famille d'orbite déduite de `OpOrbit`) et le caractère
+**habité** du vol (marqueur d'équipage du champ `Type`). Ce sont elles aussi
+qui alimentent `charges-utiles.html`, la page vers laquelle pointe chaque vol.
 
 Aucune donnée n'est envoyée sur le réseau : le script lit data/gcat/*.tsv.
 """
@@ -75,6 +76,35 @@ ORBIT_FAMILIES = {
 # Ordre d'affichage quand un vol dépose ses charges utiles sur plusieurs
 # orbites : du plus proche de la Terre au plus lointain.
 ORBIT_ORDER = ["LEO", "MEO", "GEO", "HEO", "Lunaire", "Interplanétaire"]
+
+# Marqueur d'équipage du champ `Type` d'une charge utile. Ce champ encode
+# plusieurs attributs sur ses premiers caractères :
+#
+#   1re lettre   : classe d'objet — `P` charge utile, `R` étage, `D` débris ;
+#   2e caractère : `H` si **le vol emportait un équipage**, `P` sinon ;
+#   4e caractère : `H` si **le véhicule est habitable**, quel que soit le vol.
+#
+# Les deux `H` ne disent pas la même chose, et seul le second caractère répond
+# à la question « vol habité ? ». Les cas de contrôle du catalogue le montrent :
+#
+#   Shenzhou 1 à 4    `PP-H`      véhicule habitable, vol sans personne
+#   Crew Dragon DM-1  `PP-H-V-`   idem
+#   Shenzhou 5        `PH-H`      vol habité
+#   Soyouz TM-2       `PH H V`    vol habité
+#   Buran OK-1K       `P`         ni l'un ni l'autre (lancé sans équipage)
+#   Apollo 6 / 7      `PP-H` / `PH-H`  le couple non habité / habité
+#
+# Se fier au 4e caractère produirait donc la liste fausse des véhicules
+# habitables jamais habités ; se fier au nom de la charge utile raterait les
+# mêmes vols. La règle retenue désigne 360 vols sur le millésime courant, ce qui
+# recoupe le décompte des vols habités établi indépendamment.
+CREW_MARK = "H"
+CREW_MARK_INDEX = 1
+
+# Fourchette de contrôle des vols habités. Elle n'impose rien au rendu : elle
+# sert au journal du build à signaler un changement d'encodage côté GCAT, qui
+# viderait sinon le filtre « habité » sans bruit.
+CREWED_RANGE = (300, 420)
 
 # Colonnes de libellés des tables de référence (sites.tsv et orgs.tsv ont le
 # même jeu de colonnes).
@@ -535,7 +565,7 @@ def build_launches(dataset: Dataset, translator: Translator | None = None) -> li
 
 
 # --------------------------------------------------------------------------- #
-# Charges utiles : masse en orbite et destination
+# Charges utiles : masse en orbite, destination, vol habité
 # --------------------------------------------------------------------------- #
 
 
@@ -575,6 +605,17 @@ def orbit_rank(label: str) -> tuple[int, str]:
     return (len(ORBIT_ORDER), label)
 
 
+def is_crewed(kind: str) -> bool:
+    """Le vol emportait-il un équipage ? Voir `CREW_MARK`.
+
+    On lit le **2e** caractère de `Type`, celui du vol, et non le 4e, qui
+    signale un véhicule habitable : Shenzhou 1 à 4 et Crew Dragon Demo-1
+    portent le second sans avoir eu personne à bord.
+    """
+    marker = (kind or "").strip().upper()
+    return len(marker) > CREW_MARK_INDEX and marker[CREW_MARK_INDEX] == CREW_MARK
+
+
 def read_payloads(data_dir: Path, translator: Translator | None = None) -> list[dict]:
     """Une entrée par charge utile : `satcat.tsv` puis `ftocat.tsv`.
 
@@ -583,6 +624,10 @@ def read_payloads(data_dir: Path, translator: Translator | None = None) -> list[
     d'un échec. Les deux alimentent la page des charges utiles (avec un statut
     distinct), mais **seule la première sert à la masse en orbite** : compter
     une charge perdue dans « masse en orbite » serait faux.
+
+    En revanche, le marqueur d'équipage est lu dans les deux tables : un vol
+    habité qui échoue (Soyouz MS-10, navette Challenger) reste un vol habité, et
+    sa charge utile n'existe que dans `ftocat.tsv`.
 
     Une charge utile est une ligne dont le champ `Type` commence par `P` (le
     catalogue distingue les étages `R`, les débris `D`, les composants…).
@@ -634,6 +679,8 @@ def read_payloads(data_dir: Path, translator: Translator | None = None) -> list[
                 "orbit_code": orbit_code,
                 "owner": translator.org(owner_code) if translator else owner_code,
                 "failed": failed,
+                "crewed": is_crewed(kind),
+                "type": kind,
             }
 
     return sorted(
@@ -643,14 +690,19 @@ def read_payloads(data_dir: Path, translator: Translator | None = None) -> list[
 
 
 def attach_payloads(launches: list[dict], payloads: list[dict]) -> None:
-    """Ajoute à chaque lancement sa masse en orbite et sa destination.
+    """Ajoute à chaque lancement sa masse en orbite, sa destination et son équipage.
 
     - `mass_kg` : somme des masses **connues** des charges utiles cataloguées
       en orbite ; vide (None) si aucune n'a de masse, jamais zéro ;
     - `payloads_with_mass` : sur combien de charges utiles la somme porte ;
     - `destination` : familles d'orbite de ces charges utiles, du plus proche au
       plus lointain (`LEO · GEO` pour un vol à destination mixte) ;
-    - `destination_codes` : les codes `OpOrbit` bruts, pour l'infobulle.
+    - `destination_codes` : les codes `OpOrbit` bruts, pour l'infobulle ;
+    - `crewed` : le vol emportait un équipage, c'est-à-dire qu'au moins une de
+      ses charges utiles porte le marqueur d'équipage. L'agrégation par vol est
+      ce qui empêche de compter sept fois une mission navette ; et l'on regarde
+      **toutes** les charges du vol, échecs compris, parce qu'un vol habité qui
+      échoue reste un vol habité.
 
     Un lancement en échec n'a, par construction, aucune charge utile dans
     `satcat.tsv` : sa masse en orbite reste vide, ce qui est le résultat exact.
@@ -679,6 +731,7 @@ def attach_payloads(launches: list[dict], payloads: list[dict]) -> None:
         item["destination_codes"] = " · ".join(
             sorted({payload["orbit_code"] for payload in in_orbit if payload["orbit_code"]})
         )
+        item["crewed"] = any(payload["crewed"] for payload in group)
 
 
 def report_orbits(payloads: list[dict]) -> None:
@@ -702,6 +755,31 @@ def report_orbits(payloads: list[dict]) -> None:
         print(f"orbites hors familles connues ({len(unmapped)}) : {top}")
 
 
+def report_crewed(launches: list[dict]) -> None:
+    """Trace les vols habités et alerte si le marqueur d'équipage se dérobe.
+
+    Le total est le garde-fou de la règle `is_crewed` : si le GCAT change
+    l'encodage de `Type`, le filtre « habité » se viderait sans que rien ne le
+    dise. On affiche donc le total, sa répartition par décennie et les vols
+    habités en échec, et on sort de la fourchette attendue en annotation.
+    """
+    crewed = [item for item in launches if item["crewed"]]
+    decades = Counter(decade_of(item["year"]) for item in crewed)
+    failed = [item["tag"] for item in crewed if item["status"] == "échec"]
+
+    listed = ", ".join(f"{name}={count}" for name, count in sorted(decades.items()))
+    print(f"vols habités : {len(crewed)} — {listed or 'aucun'}")
+    if failed:
+        print(f"vols habités en échec : {len(failed)} — {', '.join(failed[:8])}")
+
+    low, high = CREWED_RANGE
+    if not low <= len(crewed) <= high:
+        print(
+            f"::warning::vols habités hors de la fourchette {low}-{high} : {len(crewed)} "
+            f"— vérifier l'encodage de Type (2e caractère = marqueur d'équipage)"
+        )
+
+
 def launch_stats(launches: list[dict]) -> dict:
     counts = Counter(item["status"] for item in launches)
     years = [item["year"] for item in launches if item["year"]]
@@ -717,6 +795,7 @@ def launch_stats(launches: list[dict]) -> dict:
         "failures": failures,
         "unknown": counts.get("inconnu", 0),
         "objects": sum(item["objects"] for item in launches),
+        "crewed": sum(1 for item in launches if item["crewed"]),
         "first_year": first,
         "last_year": last,
         "period": f"{first} → {last}" if first else "—",
@@ -992,8 +1071,8 @@ def main() -> int:
     translator = Translator(data_dir)
     launches = build_launches(dataset, translator)
 
-    # Charges utiles : masses et orbites viennent de satcat.tsv (objets
-    # catalogués) et de ftocat.tsv (charges perdues en échec).
+    # Charges utiles : masses, orbites et équipage viennent de satcat.tsv
+    # (objets catalogués) et de ftocat.tsv (charges perdues en échec).
     payloads = read_payloads(data_dir, translator)
     attach_payloads(launches, payloads)
 
@@ -1007,6 +1086,7 @@ def main() -> int:
     report_codes(dataset, "Launch_Code")
     report_codes(dataset, "LVState")
     report_orbits(payloads)
+    report_crewed(launches)
     translator.report()
 
     manifest: dict = {}
@@ -1110,6 +1190,7 @@ def main() -> int:
     # Explorateur : une entrée par lancement, colonnes utiles seulement.
     # `s` et `a` portent les libellés, `sc` et `ac` les codes GCAT d'origine.
     # `dc` garde les codes d'orbite bruts derrière `dd` (libellé de destination).
+    # `cr` vaut 1 pour un vol habité, 0 sinon.
     payload = {
         "source": "GCAT — launchlog.tsv (Jonathan McDowell)",
         "generated": manifest.get("generated_at"),
@@ -1133,6 +1214,7 @@ def main() -> int:
                 "m": item["mass_kg"],
                 "dd": item["destination"],
                 "dc": item["destination_codes"],
+                "cr": 1 if item["crewed"] else 0,
                 "st": item["status"],
                 "c": item["state"],
             }
@@ -1142,6 +1224,7 @@ def main() -> int:
     write_json(out_dir / "data" / "launches.json", payload)
 
     # Charges utiles : une entrée par charge utile, pour la page filtrée par vol.
+    # `cr` vaut 1 quand la charge porte le marqueur d'équipage du vol.
     write_json(
         out_dir / "data" / "charges-utiles.json",
         {
@@ -1157,6 +1240,8 @@ def main() -> int:
                     "r": item["orbit_code"],
                     "ow": item["owner"],
                     "f": 1 if item["failed"] else 0,
+                    "cr": 1 if item["crewed"] else 0,
+                    "ty": item["type"],
                 }
                 for item in payloads
             ],

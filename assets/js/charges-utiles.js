@@ -2,12 +2,16 @@
    Lit data/charges-utiles.json : une entrée par charge utile — `satcat.tsv`
    pour les objets catalogués en orbite, `ftocat.tsv` pour les charges perdues
    lors d'un échec. `?vol=<Launch_Tag>` restreint la vue à un lancement : c'est
-   la cible du lien de la colonne « charges utiles » de l'explorateur. */
+   la cible du lien de la colonne « charges utiles » de l'explorateur.
+
+   `cr` vaut 1 quand le vol emportait un équipage (marqueur du GCAT, 2e
+   caractère du champ `Type`), `ty` conserve le code `Type` brut pour que la
+   règle reste vérifiable au survol. */
 
 const fmt = new Intl.NumberFormat('fr-FR');
 
 const state = {
-  q: '', vol: '', orbit: '', yMin: null, yMax: null, status: '',
+  q: '', vol: '', orbit: '', crewed: '', yMin: null, yMax: null, status: '',
   sort: 'year', dir: -1, page: 1, pageSize: 50,
 };
 
@@ -27,6 +31,7 @@ function sortValue(item, key) {
     case 'mass': return item.m || -1;
     case 'orbit': return (item.o || '').toLowerCase();
     case 'owner': return (item.ow || '').toLowerCase();
+    case 'crewed': return item.cr || 0;
     case 'status': return item.f ? 'échec' : 'en orbite';
     default: return (item.n || '').toLowerCase();
   }
@@ -36,6 +41,8 @@ function matches(item) {
   if (state.yMin && (!item.y || item.y < state.yMin)) return false;
   if (state.yMax && (!item.y || item.y > state.yMax)) return false;
   if (state.orbit && item.o !== state.orbit) return false;
+  if (state.crewed === '1' && !item.cr) return false;
+  if (state.crewed === '0' && item.cr) return false;
   if (state.status === 'orbite' && item.f) return false;
   if (state.status === 'echec' && !item.f) return false;
 
@@ -135,6 +142,15 @@ function renderPager() {
   add('›', state.page + 1, { disabled: state.page >= pages });
 }
 
+/* Pastille d'équipage : elle qualifie le vol qui a emporté cette charge utile.
+   Le code `Type` brut reste dans l'infobulle du nom, ce qui rend la règle
+   vérifiable sans quitter la page. */
+function crewBadge(item) {
+  if (!item.cr) return '';
+  const tip = `Vol habité — Type GCAT : ${item.ty || 'PH…'}`;
+  return ` <span class="pill" title="${esc(tip)}">habité</span>`;
+}
+
 function render() {
   const tbody = $('tbody');
   const start = (state.page - 1) * state.pageSize;
@@ -142,7 +158,7 @@ function render() {
 
   tbody.innerHTML = slice.map((item) => `
     <tr>
-      <td class="name">${esc(item.n) || '<span class="dim">sans nom</span>'}</td>
+      <td class="name"${item.ty ? ` title="Type GCAT : ${esc(item.ty)}"` : ''}>${esc(item.n) || '<span class="dim">sans nom</span>'}${crewBadge(item)}</td>
       <td><a class="pill mono" href="charges-utiles.html?vol=${encodeURIComponent(item.t)}"
              title="Voir les charges utiles de ce vol">${esc(item.t)}</a></td>
       <td class="num">${item.y ? fmt.format(item.y) : '<span class="dim">—</span>'}</td>
@@ -207,6 +223,12 @@ function bind() {
     apply();
   });
 
+  $('f-crewed').addEventListener('change', (event) => {
+    state.crewed = event.target.value;
+    state.page = 1;
+    apply();
+  });
+
   $('f-status').addEventListener('change', (event) => {
     state.status = event.target.value;
     state.page = 1;
@@ -221,13 +243,14 @@ function bind() {
 
   $('f-reset').addEventListener('click', () => {
     Object.assign(state, {
-      q: '', vol: '', orbit: '', yMin: null, yMax: null, status: '', page: 1,
+      q: '', vol: '', orbit: '', crewed: '', yMin: null, yMax: null, status: '', page: 1,
     });
     $('f-query').value = '';
     $('f-vol').value = '';
     $('f-orbit').value = '';
     $('f-year-min').value = '';
     $('f-year-max').value = '';
+    $('f-crewed').value = '';
     $('f-status').value = '';
     apply();
   });
@@ -238,7 +261,7 @@ function bind() {
       if (state.sort === key) state.dir = -state.dir;
       else {
         state.sort = key;
-        state.dir = ['year', 'mass'].includes(key) ? -1 : 1;
+        state.dir = ['year', 'mass', 'crewed'].includes(key) ? -1 : 1;
       }
       state.page = 1;
       apply();

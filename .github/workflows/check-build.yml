@@ -59,17 +59,23 @@ jobs:
           # page vidée par un template cassé, ne doit pas passer la CI.
           expected=$(ls _site/classements/*.html | wc -l)
           test "$expected" -ge 7 || { echo "pages de classement manquantes : $expected" ; exit 1 ; }
+          # Les filtres d'équipage sont rendus par le JS : si le select a disparu
+          # du template, le filtre est mort sans qu'aucune erreur ne le dise.
+          for id in f-crewed note-crewed ; do
+            grep -q "id=\"$id\"" _site/launches.html \
+              || { echo "contrôle manquant dans launches.html : $id" ; exit 1 ; }
+          done
           echo "--- poids ---"
           du -sh _site
           du -h _site/data/launches.json _site/data/charges-utiles.json
 
       - name: Check payload fields
         run: |
-          # Les colonnes « masse en orbite » et « destination » sont calculées au
-          # build : si la jointure launchlog → satcat casse (colonne renommée,
-          # fichier absent), le site publierait des colonnes vides sans que rien
-          # ne signale l'erreur. On vérifie donc que les deux champs sont
-          # réellement renseignés, et on refuse un _site/ silencieusement vide.
+          # Les colonnes « masse en orbite », « destination » et « vol habité »
+          # sont calculées au build : si la jointure launchlog → satcat casse
+          # (colonne renommée, fichier absent), le site publierait des colonnes
+          # vides sans que rien ne signale l'erreur. On vérifie donc que les
+          # champs sont réellement renseignés, et on refuse un _site/ vide.
           python3 - <<'PY'
           import json
           import sys
@@ -83,13 +89,20 @@ jobs:
           with_mass = sum(1 for item in launches if item.get("m"))
           with_destination = sum(1 for item in launches if item.get("dd"))
           known_mass = sum(item.get("m") or 0 for item in launches)
+          crewed = [item["t"] for item in launches if item.get("cr")]
+          crewed_failed = [
+              item["t"] for item in launches
+              if item.get("cr") and item.get("st") == "échec"
+          ]
+          crewed_payloads = sum(1 for item in payloads if item.get("cr"))
 
           print(f"lancements : {total}")
           print(f"  avec charges utiles : {with_payloads} ({100 * with_payloads / total:.1f} %)")
           print(f"  avec masse connue   : {with_mass} ({100 * with_mass / total:.1f} %)")
           print(f"  avec destination    : {with_destination} ({100 * with_destination / total:.1f} %)")
           print(f"  masse cumulée       : {known_mass / 1000:.0f} t")
-          print(f"charges utiles : {len(payloads)}")
+          print(f"  vols habités        : {len(crewed)} (dont {len(crewed_failed)} en échec)")
+          print(f"charges utiles : {len(payloads)} (dont {crewed_payloads} sur un vol habité)")
 
           failures = []
           if not payloads:
@@ -105,6 +118,36 @@ jobs:
               print(f"vols avec charges utiles mais sans destination ({len(orphan)}) : "
                     + ", ".join(orphan[:10]))
               failures.append(f"{len(orphan)} vol(s) sans destination malgré des charges utiles")
+
+          # Marqueur d'équipage : le GCAT l'encode dans le 2e caractère du champ
+          # `Type`. Un total dans la fourchette ne suffit pas — une règle qui
+          # lirait le 4e caractère (« véhicule habitable ») en produirait un du
+          # même ordre de grandeur. D'où ces contrôles nominatifs, dont trois
+          # véhicules habitables qui n'ont jamais volé avec personne.
+          if not 340 <= len(crewed) <= 400:
+              failures.append(
+                  f"vols habités hors fourchette 340-400 : {len(crewed)} "
+                  "— encodage de Type changé ?"
+              )
+
+          controls = {
+              "1968-025": False,  # Apollo 6, véhicule habitable, vol sans équipage
+              "1968-089": True,   # Apollo 7, premier vol habité du programme
+              "1988-100": False,  # Buran OK-1K, lancé sans équipage
+              "1999-061": False,  # Shenzhou 1
+              "2003-045": True,   # Shenzhou 5
+              "2019-011": False,  # Crew Dragon Demo-1
+              "2021-053": True,   # Shenzhou 12
+          }
+          by_tag = {item["t"]: bool(item.get("cr")) for item in launches}
+          wrong = [
+              f"{tag} (attendu {want}, obtenu {by_tag.get(tag)})"
+              for tag, want in controls.items()
+              if by_tag.get(tag) != want
+          ]
+          if wrong:
+              print("vols de contrôle mal marqués : " + " ; ".join(wrong))
+              failures.append(f"{len(wrong)} vol(s) de contrôle mal marqués pour l'équipage")
 
           if failures:
               for failure in failures:
