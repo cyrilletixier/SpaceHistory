@@ -5,11 +5,18 @@
 
 Tout ce qui est calculable l'est ici : les pages HTML sortent finies, les
 classements sont rendus au build. Le navigateur ne reçoit plus qu'un JSON
-allégé (une entrée par lancement) pour l'explorateur des lancements.
+allégé (une entrée par lancement) pour l'explorateur des lancements, et un
+second JSON (une entrée par charge utile) pour la page des charges utiles.
 
 Les codes bruts du GCAT (sites, organisations, États) sont traduits via
 sites.tsv et orgs.tsv ; les codes d'origine restent disponibles (infobulle,
 JSON, journal du build) pour que rien ne devienne invérifiable.
+
+Les charges utiles (`satcat.tsv`, complété par `ftocat.tsv` pour les échecs)
+fournissent les deux colonnes ajoutées à l'explorateur : la **masse en orbite**
+(somme des `Mass` des charges utiles réellement cataloguées en orbite) et la
+**destination** (famille d'orbite déduite de `OpOrbit`). Ce sont elles aussi qui
+alimentent `charges-utiles.html`, la page vers laquelle pointe chaque vol.
 
 Aucune donnée n'est envoyée sur le réseau : le script lit data/gcat/*.tsv.
 """
@@ -42,6 +49,32 @@ MONTHS = {
 # Valeurs de remplissage du GCAT : elles ne désignent aucun lieu, aucune
 # organisation, aucun État ; on ne les traduit donc pas.
 UNKNOWN_CODES = {"", "-", "?", "*", "UNK", "X"}
+
+# Familles d'orbite affichées dans la colonne « Destination ». La clé est le
+# code `OpOrbit` du GCAT, qualificatif retiré : `LLEO/I` → `LLEO`, `GEO/T` →
+# `GEO`. Le qualificatif (inclinaison, héliosynchrone, polaire…) précise
+# l'orbite, il n'en change pas la famille.
+#
+# Un code absent de cette table n'est pas traduit : il s'affiche tel quel et le
+# journal du build le signale. Aucune orbite n'est donc rangée d'office dans une
+# famille, comme aucun code d'agence n'est inventé.
+ORBIT_FAMILIES = {
+    "LLEO": "LEO",
+    "LEO": "LEO",
+    "MEO": "MEO",
+    "GEO": "GEO",
+    "GSO": "GEO",
+    "HEO": "HEO",
+    "EEO": "Interplanétaire",
+    "HCO": "Interplanétaire",
+    "LLO": "Lunaire",
+    "LMO": "Lunaire",
+    "LSO": "Lunaire",
+}
+
+# Ordre d'affichage quand un vol dépose ses charges utiles sur plusieurs
+# orbites : du plus proche de la Terre au plus lointain.
+ORBIT_ORDER = ["LEO", "MEO", "GEO", "HEO", "Lunaire", "Interplanétaire"]
 
 # Colonnes de libellés des tables de référence (sites.tsv et orgs.tsv ont le
 # même jeu de colonnes).
@@ -501,6 +534,174 @@ def build_launches(dataset: Dataset, translator: Translator | None = None) -> li
     return launches
 
 
+# --------------------------------------------------------------------------- #
+# Charges utiles : masse en orbite et destination
+# --------------------------------------------------------------------------- #
+
+
+def to_mass(raw: str) -> int | None:
+    """Masse en kg d'une ligne de catalogue, ou None si elle n'est pas connue.
+
+    Le GCAT écrit `0` (parfois `-`) quand la masse est inconnue : c'est une
+    valeur de remplissage, pas un objet de masse nulle. Ces lignes sont donc
+    écartées de la somme plutôt que de la tirer vers zéro — 32 000 objets du
+    catalogue portent ce zéro.
+    """
+    value = (raw or "").strip().replace(" ", "")
+    if not value or value in {"-", "?", "*"}:
+        return None
+    try:
+        mass = float(value)
+    except ValueError:
+        return None
+    return int(round(mass)) if mass > 0 else None
+
+
+def orbit_label(raw: str) -> str:
+    """Famille d'orbite d'un code `OpOrbit` : `LLEO/I` → `LEO`.
+
+    Le qualificatif après la barre oblique (héliosynchrone, polaire, inclinée…)
+    précise l'orbite, il ne la change pas. Un code inconnu est rendu tel quel :
+    il vaut mieux afficher `XYZ` que de ranger l'objet dans une famille fausse.
+    """
+    base = (raw or "").strip().upper().split("/")[0]
+    return ORBIT_FAMILIES.get(base, base)
+
+
+def orbit_rank(label: str) -> tuple[int, str]:
+    """Clé de tri des destinations : du plus proche au plus lointain."""
+    if label in ORBIT_ORDER:
+        return (ORBIT_ORDER.index(label), label)
+    return (len(ORBIT_ORDER), label)
+
+
+def read_payloads(data_dir: Path, translator: Translator | None = None) -> list[dict]:
+    """Une entrée par charge utile : `satcat.tsv` puis `ftocat.tsv`.
+
+    `satcat.tsv` recense les objets catalogués, donc les charges utiles
+    effectivement mises en orbite ; `ftocat.tsv` recense celles perdues lors
+    d'un échec. Les deux alimentent la page des charges utiles (avec un statut
+    distinct), mais **seule la première sert à la masse en orbite** : compter
+    une charge perdue dans « masse en orbite » serait faux.
+
+    Une charge utile est une ligne dont le champ `Type` commence par `P` (le
+    catalogue distingue les étages `R`, les débris `D`, les composants…).
+    """
+    payloads: dict[tuple[str, str], dict] = {}
+
+    for filename, failed in (("satcat.tsv", False), ("ftocat.tsv", True)):
+        path = data_dir / filename
+        if not path.exists():
+            continue
+
+        table = read_gcat_tsv(path)
+        idx = {
+            name: table.col(name)
+            for name in (
+                "JCAT", "Launch_Tag", "Name", "PLName", "Type", "Mass",
+                "OpOrbit", "Owner", "LDate",
+            )
+        }
+        if idx["Type"] < 0 or idx["Launch_Tag"] < 0:
+            continue
+
+        for row in table.rows:
+            kind = table.cell(row, idx["Type"]).strip().upper()
+            if not kind.startswith("P"):
+                continue
+
+            tag = table.cell(row, idx["Launch_Tag"]).strip()
+            if not tag or tag in UNKNOWN_CODES:
+                continue
+
+            name = table.cell(row, idx["Name"]) or table.cell(row, idx["PLName"])
+            orbit_code = table.cell(row, idx["OpOrbit"]).strip()
+            owner_code = table.cell(row, idx["Owner"]).strip()
+            year, _, _ = parse_date(table.cell(row, idx["LDate"]))
+            jcat = table.cell(row, idx["JCAT"]).strip()
+
+            key = (tag, jcat or f"{name}|{year}")
+            if key in payloads:
+                continue
+
+            payloads[key] = {
+                "jcat": jcat,
+                "launch": tag,
+                "name": name,
+                "year": year,
+                "mass": to_mass(table.cell(row, idx["Mass"])),
+                "orbit": orbit_label(orbit_code),
+                "orbit_code": orbit_code,
+                "owner": translator.org(owner_code) if translator else owner_code,
+                "failed": failed,
+            }
+
+    return sorted(
+        payloads.values(),
+        key=lambda item: (item["launch"], (item["name"] or "").lower()),
+    )
+
+
+def attach_payloads(launches: list[dict], payloads: list[dict]) -> None:
+    """Ajoute à chaque lancement sa masse en orbite et sa destination.
+
+    - `mass_kg` : somme des masses **connues** des charges utiles cataloguées
+      en orbite ; vide (None) si aucune n'a de masse, jamais zéro ;
+    - `payloads_with_mass` : sur combien de charges utiles la somme porte ;
+    - `destination` : familles d'orbite de ces charges utiles, du plus proche au
+      plus lointain (`LEO · GEO` pour un vol à destination mixte) ;
+    - `destination_codes` : les codes `OpOrbit` bruts, pour l'infobulle.
+
+    Un lancement en échec n'a, par construction, aucune charge utile dans
+    `satcat.tsv` : sa masse en orbite reste vide, ce qui est le résultat exact.
+    """
+    by_tag: dict[str, list[dict]] = {}
+    for payload in payloads:
+        by_tag.setdefault(payload["launch"], []).append(payload)
+
+    for item in launches:
+        group = by_tag.get(item["tag"], [])
+        in_orbit = [payload for payload in group if not payload["failed"]]
+        masses = [payload["mass"] for payload in in_orbit if payload["mass"]]
+
+        families: list[str] = []
+        for payload in in_orbit:
+            label = payload["orbit"]
+            if label and label not in families:
+                families.append(label)
+        families.sort(key=orbit_rank)
+
+        item["payload_count"] = len(group)
+        item["payloads_in_orbit"] = len(in_orbit)
+        item["payloads_with_mass"] = len(masses)
+        item["mass_kg"] = sum(masses) if masses else None
+        item["destination"] = " · ".join(families)
+        item["destination_codes"] = " · ".join(
+            sorted({payload["orbit_code"] for payload in in_orbit if payload["orbit_code"]})
+        )
+
+
+def report_orbits(payloads: list[dict]) -> None:
+    """Trace le vocabulaire des orbites : familles obtenues, codes non traduits.
+
+    Même principe que `report_codes` : si le GCAT introduit une orbite inédite,
+    ça doit apparaître dans le journal du build, pas silencieusement dans une
+    colonne.
+    """
+    families = Counter(payload["orbit"] for payload in payloads if payload["orbit"])
+    unmapped = Counter(
+        payload["orbit_code"].strip().upper().split("/")[0]
+        for payload in payloads
+        if payload["orbit_code"] and payload["orbit"] not in ORBIT_ORDER
+    )
+
+    listed = ", ".join(f"{label}={count}" for label, count in families.most_common(12))
+    print(f"destinations ({len(payloads)} charges utiles) : {listed or 'aucune'}")
+    if unmapped:
+        top = ", ".join(f"{code}={count}" for code, count in unmapped.most_common(10))
+        print(f"orbites hors familles connues ({len(unmapped)}) : {top}")
+
+
 def launch_stats(launches: list[dict]) -> dict:
     counts = Counter(item["status"] for item in launches)
     years = [item["year"] for item in launches if item["year"]]
@@ -611,6 +812,13 @@ def format_pct(value) -> str:
     if value is None:
         return "—"
     return f"{value:.1f}\u202f%".replace(".", ",")
+
+
+def format_mass(value) -> str:
+    """Masse en kg, ou tiret cadratin : une somme inconnue n'est pas zéro."""
+    if not value:
+        return "—"
+    return f"{format_int(value)}\u202fkg"
 
 
 def format_sync(raw: str | None) -> str:
@@ -783,7 +991,14 @@ def main() -> int:
     dataset = read_gcat_tsv(launchlog)
     translator = Translator(data_dir)
     launches = build_launches(dataset, translator)
+
+    # Charges utiles : masses et orbites viennent de satcat.tsv (objets
+    # catalogués) et de ftocat.tsv (charges perdues en échec).
+    payloads = read_payloads(data_dir, translator)
+    attach_payloads(launches, payloads)
+
     stats = launch_stats(launches)
+    stats["payloads"] = len(payloads)
 
     print(
         f"statuts : succès {stats['successes']}, échec {stats['failures']}, "
@@ -791,6 +1006,7 @@ def main() -> int:
     )
     report_codes(dataset, "Launch_Code")
     report_codes(dataset, "LVState")
+    report_orbits(payloads)
     translator.report()
 
     manifest: dict = {}
@@ -811,6 +1027,7 @@ def main() -> int:
     )
     env.filters["int_fr"] = format_int
     env.filters["pct"] = format_pct
+    env.filters["mass"] = format_mass
 
     if out_dir.exists():
         shutil.rmtree(out_dir)
@@ -832,6 +1049,10 @@ def main() -> int:
     render(
         env, "launches.html", out_dir / "launches.html",
         root="", page_path="launches.html", active="launches", **base,
+    )
+    render(
+        env, "charges-utiles.html", out_dir / "charges-utiles.html",
+        root="", page_path="charges-utiles.html", active="payloads", **base,
     )
     render(
         env, "objets.html", out_dir / "objets.html",
@@ -888,6 +1109,7 @@ def main() -> int:
 
     # Explorateur : une entrée par lancement, colonnes utiles seulement.
     # `s` et `a` portent les libellés, `sc` et `ac` les codes GCAT d'origine.
+    # `dc` garde les codes d'orbite bruts derrière `dd` (libellé de destination).
     payload = {
         "source": "GCAT — launchlog.tsv (Jonathan McDowell)",
         "generated": manifest.get("generated_at"),
@@ -905,6 +1127,12 @@ def main() -> int:
                 "ac": item["agency_code"],
                 "o": item["objects"],
                 "n": " · ".join(item["names"][:8])[:140],
+                "pc": item["payload_count"],
+                "pi": item["payloads_in_orbit"],
+                "pm": item["payloads_with_mass"],
+                "m": item["mass_kg"],
+                "dd": item["destination"],
+                "dc": item["destination_codes"],
                 "st": item["status"],
                 "c": item["state"],
             }
@@ -912,6 +1140,28 @@ def main() -> int:
         ],
     }
     write_json(out_dir / "data" / "launches.json", payload)
+
+    # Charges utiles : une entrée par charge utile, pour la page filtrée par vol.
+    write_json(
+        out_dir / "data" / "charges-utiles.json",
+        {
+            "source": "GCAT — satcat.tsv + ftocat.tsv (Jonathan McDowell)",
+            "generated": manifest.get("generated_at"),
+            "payloads": [
+                {
+                    "t": item["launch"],
+                    "n": item["name"],
+                    "y": item["year"],
+                    "m": item["mass"],
+                    "o": item["orbit"],
+                    "r": item["orbit_code"],
+                    "ow": item["owner"],
+                    "f": 1 if item["failed"] else 0,
+                }
+                for item in payloads
+            ],
+        },
+    )
 
     # Ressources statiques
     assets = REPO_ROOT / "assets"
@@ -924,7 +1174,7 @@ def main() -> int:
         encoding="utf-8",
     )
 
-    pages = ["", "launches.html", "objets.html", "classements/index.html"]
+    pages = ["", "launches.html", "charges-utiles.html", "objets.html", "classements/index.html"]
     pages += [f"classements/{ranking['slug']}.html" for ranking in RANKINGS]
     urls = "".join(f"  <url><loc>{SITE_URL}/{page}</loc></url>\n" for page in pages)
     (out_dir / "sitemap.xml").write_text(
@@ -936,8 +1186,12 @@ def main() -> int:
 
     size = sum(path.stat().st_size for path in out_dir.rglob("*") if path.is_file())
     json_size = (out_dir / "data" / "launches.json").stat().st_size
+    payload_size = (out_dir / "data" / "charges-utiles.json").stat().st_size
     print(f"{stats['launches']} lancements, {stats['objects']} objets, {len(pages)} page(s)")
-    print(f"_site/ : {size / 1024:.0f} Ko ; explorateur : {json_size / 1024:.0f} Ko")
+    print(
+        f"_site/ : {size / 1024:.0f} Ko ; explorateur : {json_size / 1024:.0f} Ko ; "
+        f"charges utiles : {payload_size / 1024:.0f} Ko"
+    )
     return 0
 
 

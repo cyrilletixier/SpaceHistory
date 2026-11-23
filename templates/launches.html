@@ -1,6 +1,6 @@
 {% extends "layout.html" %}
 {% block title %}Lancements — SpaceHistory{% endblock %}
-{% block description %}Les {{ stats.launches | int_fr }} tentatives de lancement orbital recensées depuis 1957, avec filtres par année, lanceur, site et statut.{% endblock %}
+{% block description %}Les {{ stats.launches | int_fr }} tentatives de lancement orbital recensées depuis 1957, avec filtres par année, lanceur, site et statut, masse en orbite et destination.{% endblock %}
 {% block content %}
 
   <section class="wrap">
@@ -36,6 +36,10 @@
       <label class="field">
         <span>Site</span>
         <select id="f-site"><option value="">tous</option></select>
+      </label>
+      <label class="field">
+        <span>Destination</span>
+        <select id="f-destination"><option value="">toutes</option></select>
       </label>
       <label class="field">
         <span>Statut</span>
@@ -75,7 +79,9 @@
             <th><button type="button" data-sort="site">Site</button></th>
             <th><button type="button" data-sort="agency">Agence</button></th>
             <th class="num"><button type="button" data-sort="objects">Objets</button></th>
-            <th>Charge(s) utile(s)</th>
+            <th class="num"><button type="button" data-sort="payloads">Charges utiles</button></th>
+            <th class="num"><button type="button" data-sort="mass">Masse en orbite</button></th>
+            <th><button type="button" data-sort="destination">Destination</button></th>
             <th><button type="button" data-sort="status">Statut</button></th>
           </tr>
         </thead>
@@ -99,6 +105,20 @@
       avec le code GCAT en infobulle.
       {{ source_rows | int_fr }} lignes brutes dans le fichier source, agrégées en
       {{ stats.launches | int_fr }} lancements.
+    </p>
+
+    <p class="note">
+      <strong>Charges utiles</strong> : le compteur renvoie vers la page des charges utiles
+      filtrée sur le vol (<code>charges-utiles.html?vol=…</code>).
+      <strong>Masse en orbite</strong> : somme du champ <code>Mass</code> de
+      <code>satcat.tsv</code> pour les charges utiles (= <code>Type</code> commençant par
+      <code>P</code>) effectivement cataloguées en orbite ; le <code>0</code> de remplissage du
+      GCAT est tenu pour inconnu, et un vol dont aucune masse n'est connue affiche « — » plutôt
+      qu'un zéro trompeur. Une charge perdue lors d'un échec n'entre pas dans la somme :
+      elle figure dans <code>ftocat.tsv</code>, donc sur la page des charges utiles seulement.
+      <strong>Destination</strong> : famille d'orbite déduite de <code>OpOrbit</code>
+      (<code>LLEO/I</code> → <code>LEO</code>) ; un vol à destination mixte affiche plusieurs
+      familles, et un code d'orbite inconnu reste affiché tel quel.
     </p>
   </section>
 

@@ -1,0 +1,101 @@
+{% extends "layout.html" %}
+{% block title %}Charges utiles — SpaceHistory{% endblock %}
+{% block description %}Les {{ stats.payloads | int_fr }} charges utiles recensées par le GCAT, avec leur masse, leur destination et leur vol — filtrables par lancement.{% endblock %}
+{% block content %}
+
+  <section class="wrap">
+    <div class="page-head">
+      <p class="kicker">Catalogue · <span class="mono">satcat.tsv</span> + <span class="mono">ftocat.tsv</span></p>
+      <h1 class="page-title">Charges utiles</h1>
+      <p class="page-sub">
+        Les {{ stats.payloads | int_fr }} charges utiles du GCAT : les objets catalogués en orbite
+        (<code>satcat.tsv</code>) et ceux perdus lors d'un échec (<code>ftocat.tsv</code>),
+        distingués par leur statut. Chaque charge utile est rattachée au vol qui l'a emportée,
+        ce qui permet d'arriver ici depuis l'explorateur des lancements.
+      </p>
+    </div>
+
+    <div id="vol-banner" class="note" hidden></div>
+
+    <div class="controls">
+      <label class="field">
+        <span>Recherche</span>
+        <input id="f-query" type="search" placeholder="nom, propriétaire…" autocomplete="off">
+      </label>
+      <label class="field">
+        <span>Vol</span>
+        <input id="f-vol" type="search" placeholder="tous" autocomplete="off" spellcheck="false">
+      </label>
+      <label class="field">
+        <span>Destination</span>
+        <select id="f-orbit"><option value="">toutes</option></select>
+      </label>
+      <label class="field">
+        <span>Année min</span>
+        <input id="f-year-min" type="number" min="1957" max="2100" placeholder="1957" inputmode="numeric">
+      </label>
+      <label class="field">
+        <span>Année max</span>
+        <input id="f-year-max" type="number" min="1957" max="2100" placeholder="aujourd'hui" inputmode="numeric">
+      </label>
+      <label class="field">
+        <span>Statut</span>
+        <select id="f-status">
+          <option value="">tous</option>
+          <option value="orbite">en orbite</option>
+          <option value="echec">échec</option>
+        </select>
+      </label>
+      <button class="btn" id="f-reset" type="button">Réinitialiser</button>
+    </div>
+
+    <div class="result-bar">
+      <span id="count">{{ stats.payloads | int_fr }} charges utiles</span>
+      <span class="result-right">
+        <label class="inline-field">
+          lignes
+          <select id="page-size">
+            <option value="25">25</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+            <option value="250">250</option>
+          </select>
+        </label>
+        <span id="rows-info" class="dim"></span>
+      </span>
+    </div>
+
+    <div class="table-wrap" id="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th><button type="button" data-sort="name">Charge utile</button></th>
+            <th><button type="button" data-sort="vol">Vol</button></th>
+            <th class="num"><button type="button" data-sort="year">Année</button></th>
+            <th class="num"><button type="button" data-sort="mass">Masse</button></th>
+            <th><button type="button" data-sort="orbit">Destination</button></th>
+            <th><button type="button" data-sort="owner">Propriétaire</button></th>
+            <th><button type="button" data-sort="status">Statut</button></th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+
+    <div class="empty" id="empty" hidden></div>
+    <nav class="pager" id="pager" aria-label="Pagination des charges utiles"></nav>
+
+    <p class="note">
+      Masse : champ <code>Mass</code> du catalogue, en kg. Le GCAT écrit <code>0</code> quand la
+      masse n'est pas connue (et marque d'un <code>?</code> celles qu'il estime) : ces valeurs
+      s'affichent ici comme « — », jamais comme un zéro. La somme par vol, elle, ne porte donc
+      que sur les masses connues, et l'explorateur des lancements indique sur combien de charges
+      utiles elle porte.
+      Destination : famille d'orbite déduite de <code>OpOrbit</code>, le code brut restant
+      accessible au survol. Propriétaires nommés d'après <code>orgs.tsv</code>.
+    </p>
+  </section>
+
+{% endblock %}
+
+{% block scripts %}<script type="module" src="{{ root }}assets/js/charges-utiles.js"></script>{% endblock %}
