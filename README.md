@@ -33,8 +33,8 @@ Conséquences directes :
 | Page | Contenu |
 |---|---|
 | `index.html` | présentation, état de la base, repères, méthode |
-| `launches.html` | explorateur : toutes les tentatives orbitales depuis 1957 |
-| `charges-utiles.html` | catalogue des charges utiles, filtrable par vol (`?vol=`) |
+| `launches.html` | explorateur : toutes les tentatives orbitales depuis 1957, filtrables par vol habité |
+| `charges-utiles.html` | catalogue des charges utiles, filtrable par vol (`?vol=`) et par équipage |
 | `classements/index.html` | index des classements |
 | `classements/decennies.html` | tentatives, issues et objets, décennie par décennie |
 | `classements/annees.html` | le rythme annuel depuis 1957 |
@@ -85,7 +85,7 @@ Le build échoue explicitement si `data/gcat/launchlog.tsv` est absent.
 | `active.tsv` | `derived/` | satellites actuellement actifs | `objets.html` |
 | `currentcat.tsv` | `derived/` | objets actuellement en orbite, débris compris | — (à venir) |
 | `geotab.tsv` | `derived/` | journal des satellites géostationnaires | — (à venir) |
-| `satcat.tsv` | `cat/` | catalogue complet de tous les objets spatiaux | **masse et orbite** des charges utiles |
+| `satcat.tsv` | `cat/` | catalogue complet de tous les objets spatiaux | **masse et orbite** des charges utiles, **marqueur d'équipage** |
 | `psatcat.tsv` | `cat/` | catalogue des charges utiles (programme, catégorie, commentaire) | — (à venir) |
 | `ftocat.tsv` | `cat/` | catalogue des échecs de mise en orbite | charges utiles perdues |
 | `deepcat.tsv` | `cat/` | catalogue de l'espace lointain | — (à venir) |
@@ -146,7 +146,7 @@ python3 scripts/fetch_gcat.py --out data/gcat --only tables  # tables de référ
 
 ### Charges utiles, masse en orbite et destination
 
-L'explorateur des lancements porte deux colonnes calculées au build à partir de
+L'explorateur des lancements porte des colonnes calculées au build à partir de
 `satcat.tsv` (et de `ftocat.tsv` pour les charges perdues) :
 
 - **Charge utile** = ligne de catalogue dont le champ `Type` commence par `P` (le GCAT
@@ -168,6 +168,50 @@ L'explorateur des lancements porte deux colonnes calculées au build à partir d
   affiche le nombre de charges utiles et renvoie vers
   `charges-utiles.html?vol=<Launch_Tag>`. Les noms restent dans `launches.json` (champ `n`)
   pour que la recherche de l'explorateur continue de fonctionner.
+
+### Vols habités
+
+Le caractère habité d'un vol n'est **pas** déduit du nom de la mission : les libellés du
+GCAT sont hétérogènes et une même famille de véhicule couvre des vols habités et des vols
+de test sans personne à bord. Il vient d'un attribut du catalogue, le champ `Type` des
+charges utiles, qui encode trois choses sur ses premiers caractères :
+
+| Position | Valeur | Signification |
+|---|---|---|
+| 1re lettre | `P` | classe d'objet : charge utile (`R` = étage, `D` = débris…) |
+| **2e caractère** | **`H`** | **le vol emportait un équipage** |
+| 4e caractère | `H` | le véhicule est *habitable*, quel que soit le vol |
+
+Seul le 2e caractère répond à la question posée ; le 4e décrit le matériel. Les cas de
+contrôle du catalogue séparent nettement les deux :
+
+| Vol | `Type` | Équipage | Lecture |
+|---|---|---|---|
+| Shenzhou 1 à 4 | `PP-H` | non | véhicule habitable, vol de test |
+| Crew Dragon Demo-1 | `PP-H-V-` | non | idem |
+| Apollo 6 | `PP-H` | non | idem (premier vol de la Saturn V avec un CSM) |
+| Buran OK-1K | `P` | non | ni l'un ni l'autre marqueur |
+| Shenzhou 5 | `PH-H` | **oui** | premier vol habité chinois |
+| Soyouz TM-2 | `PH H V` | **oui** | |
+| Apollo 7 | `PH-H` | **oui** | |
+
+La règle retenue lit donc le 2e caractère. Sur le millésime courant du catalogue elle
+désigne **360 vols**, ce qui recoupe le décompte des vols habités établi indépendamment — un
+total qui serait très différent si la règle visait le véhicule ou les noms de mission.
+
+Deux précautions d'agrégation :
+
+- **Par vol, pas par objet** : une mission navette compte pour un lancement, pas pour ses
+  sept astronautes ni pour ses trois pièces. Un vol est habité dès qu'**une** de ses charges
+  utiles porte le marqueur.
+- **Échecs compris** : le marqueur est lu dans `satcat.tsv` *et* dans `ftocat.tsv`, car un
+  vol habité qui échoue reste un vol habité (Soyouz MS-10, navette Challenger). Ces lignes
+  ne pèsent pas sur la masse en orbite, mais comptent pour l'équipage.
+
+`.github/workflows/check-build.yml` verrouille le résultat : le total doit rester dans la
+fourchette 340–400, et sept vols de référence (Apollo 6 et 7, Buran, Shenzhou 1 et 5, Crew
+Dragon Demo-1, Shenzhou 12) doivent être marqués dans le bon sens. Un déplacement de
+l'encodage rendrait ces contrôles rouges plutôt que de vider silencieusement le filtre.
 
 Les règles détaillées, la couverture des tables de référence et les sources alternatives
 (Space-Track, CelesTrak, UNOOSA…) sont documentées dans [`SOURCES.md`](SOURCES.md).
