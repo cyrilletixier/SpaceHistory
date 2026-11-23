@@ -1,6 +1,6 @@
 {% extends "layout.html" %}
 {% block title %}Lancements — SpaceHistory{% endblock %}
-{% block description %}Les {{ stats.launches | int_fr }} tentatives de lancement orbital recensées depuis 1957, avec filtres par année, lanceur, site et statut, masse en orbite et destination.{% endblock %}
+{% block description %}Les {{ stats.launches | int_fr }} tentatives de lancement orbital recensées depuis 1957, avec filtres par année, lanceur, site, statut et vol habité, masse en orbite et destination.{% endblock %}
 {% block content %}
 
   <section class="wrap">
@@ -9,9 +9,10 @@
       <h1 class="page-title">Lancements</h1>
       <p class="page-sub">
         Les {{ stats.launches | int_fr }} tentatives de lancement orbital recensées par le
-        GCAT depuis le 4 octobre 1957. Une ligne = un lancement : les objets d'un même tir
-        sont agrégés par <code>Launch_Tag</code> au moment du build, et le nombre d'objets
-        reste affiché séparément.
+        GCAT depuis le 4 octobre 1957, dont {{ stats.crewed | int_fr }} vols habités. Une
+        ligne = un lancement : les objets d'un même tir sont agrégés par
+        <code>Launch_Tag</code> au moment du build, et le nombre d'objets reste affiché
+        séparément.
       </p>
     </div>
 
@@ -40,6 +41,14 @@
       <label class="field">
         <span>Destination</span>
         <select id="f-destination"><option value="">toutes</option></select>
+      </label>
+      <label class="field">
+        <span>Équipage</span>
+        <select id="f-crewed">
+          <option value="">tous</option>
+          <option value="1">habité</option>
+          <option value="0">sans équipage</option>
+        </select>
       </label>
       <label class="field">
         <span>Statut</span>
@@ -119,6 +128,19 @@
       <strong>Destination</strong> : famille d'orbite déduite de <code>OpOrbit</code>
       (<code>LLEO/I</code> → <code>LEO</code>) ; un vol à destination mixte affiche plusieurs
       familles, et un code d'orbite inconnu reste affiché tel quel.
+      <strong>Habillé</strong> : voir la note ci-dessous.
+    </p>
+
+    <p class="note" id="note-crewed">
+      <strong>Vol habité</strong> : le GCAT encode la nature du vol dans le champ
+      <code>Type</code> de ses charges utiles. Le <em>2e</em> caractère vaut <code>H</code>
+      quand le vol emportait un équipage (<code>PH-H</code> pour Shenzhou 5), et le
+      <em>4e</em> caractère <code>H</code> signale seulement un véhicule <em>habitable</em> :
+      Shenzhou 1 à 4 et Crew Dragon Demo-1 le portent sans avoir eu personne à bord, Buran
+      n'en porte aucun. C'est donc le 2e caractère qui est lu ici. Un vol est marqué habité dès
+      qu'une de ses charges utiles porte ce marqueur — ce qui évite de compter sept fois une
+      mission navette —, échecs compris : un vol habité qui échoue reste un vol habité.
+      {{ stats.crewed | int_fr }} vols sur {{ stats.launches | int_fr }} sont dans ce cas.
     </p>
   </section>
 
