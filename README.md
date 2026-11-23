@@ -17,15 +17,16 @@ Le dépôt remplit trois rôles :
 
 Le navigateur n'agrège plus rien. `scripts/build_site.py` lit `data/gcat/launchlog.tsv`,
 regroupe les objets par `Launch_Tag`, calcule les classements et écrit des pages **finies**
-dans `_site/`. Le seul calcul côté client est le filtrage de l'explorateur des lancements,
-qui travaille sur un JSON allégé (une entrée par lancement, 10 champs au lieu de 20).
+dans `_site/`. Le seul calcul côté client est le filtrage des deux explorateurs, qui
+travaillent sur des JSON allégés : une entrée par lancement (20 champs au lieu de 20 colonnes
+brutes) et une entrée par charge utile.
 
 Conséquences directes :
 
 - une visite ne télécharge plus les 5,3 Mo du journal brut (ni les 19,3 Mo de `satcat.tsv`) ;
 - chaque classement a une **URL propre**, un `<title>` et une description — donc indexable et citable ;
 - le header et le footer existent une seule fois, dans `templates/layout.html` ;
-- l'artefact publié ne contient que du HTML, du CSS, du JS et un JSON dérivé.
+- l'artefact publié ne contient que du HTML, du CSS, du JS et des JSON dérivés.
 
 ## Le site
 
@@ -33,6 +34,7 @@ Conséquences directes :
 |---|---|
 | `index.html` | présentation, état de la base, repères, méthode |
 | `launches.html` | explorateur : toutes les tentatives orbitales depuis 1957 |
+| `charges-utiles.html` | catalogue des charges utiles, filtrable par vol (`?vol=`) |
 | `classements/index.html` | index des classements |
 | `classements/decennies.html` | tentatives, issues et objets, décennie par décennie |
 | `classements/annees.html` | le rythme annuel depuis 1957 |
@@ -83,12 +85,12 @@ Le build échoue explicitement si `data/gcat/launchlog.tsv` est absent.
 | `active.tsv` | `derived/` | satellites actuellement actifs | `objets.html` |
 | `currentcat.tsv` | `derived/` | objets actuellement en orbite, débris compris | — (à venir) |
 | `geotab.tsv` | `derived/` | journal des satellites géostationnaires | — (à venir) |
-| `satcat.tsv` | `cat/` | catalogue complet de tous les objets spatiaux | — (à venir) |
-| `psatcat.tsv` | `cat/` | catalogue des charges utiles | — (à venir) |
-| `ftocat.tsv` | `cat/` | catalogue des échecs de mise en orbite | — (à venir) |
+| `satcat.tsv` | `cat/` | catalogue complet de tous les objets spatiaux | **masse et orbite** des charges utiles |
+| `psatcat.tsv` | `cat/` | catalogue des charges utiles (programme, catégorie, commentaire) | — (à venir) |
+| `ftocat.tsv` | `cat/` | catalogue des échecs de mise en orbite | charges utiles perdues |
 | `deepcat.tsv` | `cat/` | catalogue de l'espace lointain | — (à venir) |
 | `sites.tsv` | `tables/` | **référence** : code de site → nom, coordonnées | libellés des sites |
-| `orgs.tsv` | `tables/` | **référence** : code d'organisation ou d'État → nom | libellés des agences, des pays et des propriétaires |
+| `orgs.tsv` | `tables/` | **référence** : code d'organisation ou d'État → nom | libellés des agences, des pays, des propriétaires |
 | `lp.tsv` | `tables/` | **référence** : code de pas de tir → nom et site de rattachement | — (à venir) |
 | `MANIFEST.json` | généré | URL, taille, nombre de lignes, SHA-256 et date de récupération de chaque fichier | date de synchro affichée |
 
@@ -142,6 +144,31 @@ python3 scripts/fetch_gcat.py --out data/gcat --only tables  # tables de référ
   `Agency` (opérateur du lancement, 136 codes) et `LVState` (pays de l'engin porteur,
   20 codes). Ce ne sont donc pas deux vues du même palmarès.
 
+### Charges utiles, masse en orbite et destination
+
+L'explorateur des lancements porte deux colonnes calculées au build à partir de
+`satcat.tsv` (et de `ftocat.tsv` pour les charges perdues) :
+
+- **Charge utile** = ligne de catalogue dont le champ `Type` commence par `P` (le GCAT
+  distingue les étages `R`, les débris `D`, les composants…). Chaque charge utile est
+  rattachée à son vol par `Launch_Tag`.
+- **Masse en orbite** = somme du champ `Mass` (kg) des charges utiles **cataloguées en
+  orbite** pour ce vol. Le `0` que le GCAT écrit quand la masse est inconnue (plus de
+  32 000 objets) est traité comme une absence, pas comme un zéro : ces charges utiles sont
+  écartées de la somme, et le nombre de masses réellement additionnées est visible au
+  survol. Un vol sans aucune masse connue affiche « — ». Une charge perdue lors d'un échec
+  n'entre pas dans la somme (elle n'a pas été mise en orbite) : elle apparaît en revanche
+  sur la page des charges utiles, avec le statut « échec ».
+- **Destination** = famille d'orbite déduite de `OpOrbit` : `LLEO`/`LEO` → **LEO**,
+  `MEO`, `GEO`/`GSO`, `HEO`, `LLO`/`LMO`/`LSO` → **Lunaire**, `EEO`/`HCO` →
+  **Interplanétaire**. Le qualificatif après la barre oblique (`LLEO/I`, `GEO/T`) précise
+  l'orbite sans en changer la famille. Un code inconnu n'est pas traduit : il s'affiche tel
+  quel et le journal du build le signale, comme pour les codes d'agence.
+- **Lien vers le vol** : la colonne « charges utiles » ne recopie plus les noms ; elle
+  affiche le nombre de charges utiles et renvoie vers
+  `charges-utiles.html?vol=<Launch_Tag>`. Les noms restent dans `launches.json` (champ `n`)
+  pour que la recherche de l'explorateur continue de fonctionner.
+
 Les règles détaillées, la couverture des tables de référence et les sources alternatives
 (Space-Track, CelesTrak, UNOOSA…) sont documentées dans [`SOURCES.md`](SOURCES.md).
 
@@ -153,12 +180,14 @@ Les règles détaillées, la couverture des tables de référence et les sources
 │   ├── layout.html             # header, footer, canonical, sitemap
 │   ├── home.html               # page projet
 │   ├── launches.html           # explorateur des lancements
+│   ├── charges-utiles.html     # catalogue des charges utiles
 │   ├── objets.html             # vue objets
 │   ├── rankings_index.html     # index des classements
 │   └── rankings.html           # gabarit d'une page de classement
 ├── assets/
 │   ├── css/style.css           # thème sombre inspiré de Rocket Lab
-│   └── js/explorer.js          # filtres de l'explorateur (lit data/launches.json)
+│   ├── js/explorer.js          # filtres de l'explorateur (lit data/launches.json)
+│   └── js/charges-utiles.js    # filtres du catalogue (lit data/charges-utiles.json)
 ├── scripts/
 │   ├── fetch_gcat.py           # récupération des TSV (stdlib)
 │   ├── build_site.py           # agrégation + rendu → _site/
