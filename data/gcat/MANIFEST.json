@@ -3,7 +3,7 @@
   "source_url": "https://planet4589.org/space/gcat/",
   "license": "CC BY 4.0",
   "citation": "McDowell, J., 2020: General Catalog of Artificial Space Objects, https://planet4589.org/space/gcat",
-  "generated_at": "2026-11-22T22:31:51Z",
+  "generated_at": "2026-11-23T15:56:42Z",
   "files": [
     {
       "name": "launchlog.tsv",
@@ -11,10 +11,10 @@
       "url": "https://planet4589.org/space/gcat/tsv/derived/launchlog.tsv",
       "source_path": "derived/launchlog.tsv",
       "description": "Journal des lancements orbitaux (une ligne par objet lancé)",
-      "bytes": 5316422,
-      "rows": 32246,
+      "bytes": 5318510,
+      "rows": 32258,
       "columns": 20,
-      "sha256": "9df24e7b7aa1e3c95f85d3e504327658f641f7fbaf09beecd8abc8a3cf5a3339"
+      "sha256": "9821cafb9791baa6cfd5257e70a447fd2b612d437d4d5948ce2b4c0e5754e9fd"
     },
     {
       "name": "active.tsv",
@@ -22,10 +22,10 @@
       "url": "https://planet4589.org/space/gcat/tsv/derived/active.tsv",
       "source_path": "derived/active.tsv",
       "description": "Satellites actuellement actifs",
-      "bytes": 2619133,
-      "rows": 17315,
+      "bytes": 2620376,
+      "rows": 17324,
       "columns": 21,
-      "sha256": "dd48ca555da636f2ed6ef5209aeb3a0d0a03cc2b124a5ef5b36d896b67ee2d7f"
+      "sha256": "f3a869ee482b623654ddfb97bfd66d2b881d28db740bffe68bed89cfa8ecc3cd"
     },
     {
       "name": "currentcat.tsv",
@@ -33,10 +33,10 @@
       "url": "https://planet4589.org/space/gcat/tsv/derived/currentcat.tsv",
       "source_path": "derived/currentcat.tsv",
       "description": "Objets actuellement en orbite, débris compris",
-      "bytes": 14472022,
-      "rows": 83845,
+      "bytes": 14473730,
+      "rows": 83858,
       "columns": 23,
-      "sha256": "3f7a9a96b7ab4259500194eead998d388a7444f7b9c8a6296f773b3e62b6695a"
+      "sha256": "6b5089497cb3890300f4a13683160b598a9753fbc7b13ed960a45f30793e6317"
     },
     {
       "name": "geotab.tsv",
@@ -47,7 +47,7 @@
       "bytes": 317744,
       "rows": 1969,
       "columns": 19,
-      "sha256": "7e4fe2ac7b02c8dadc9b9fc64e8dbd28feb28fd7b07004821bb55cee64154e3f"
+      "sha256": "3053f1d4279b8890120ef0589b6a10703ffe1072c687319e30574693f789f7d5"
     },
     {
       "name": "satcat.tsv",
@@ -55,10 +55,10 @@
       "url": "https://planet4589.org/space/gcat/tsv/cat/satcat.tsv",
       "source_path": "cat/satcat.tsv",
       "description": "Catalogue complet des objets spatiaux",
-      "bytes": 19298682,
+      "bytes": 19298756,
       "rows": 69999,
       "columns": 42,
-      "sha256": "1bc2583c1897283b13d015a6bed0f723cae5f571f55e3b8b05753423224f5756"
+      "sha256": "6929bd83abb87f6721ccdd270cfe903417dcddcfe7157a706fa8942281b30d96"
     },
     {
       "name": "psatcat.tsv",
@@ -66,10 +66,10 @@
       "url": "https://planet4589.org/space/gcat/tsv/cat/psatcat.tsv",
       "source_path": "cat/psatcat.tsv",
       "description": "Catalogue des charges utiles",
-      "bytes": 5233738,
+      "bytes": 5233801,
       "rows": 27940,
       "columns": 28,
-      "sha256": "fbdfa6613861a5d460d4792417a3458edc8d238ce1b3bbc007dc2a51079c3378"
+      "sha256": "49299a89dfc772db0603a1f5b2c2ab91aa4db69ccfee0fedf8187050cf9ae112"
     },
     {
       "name": "ftocat.tsv",
@@ -80,7 +80,7 @@
       "bytes": 523866,
       "rows": 1845,
       "columns": 42,
-      "sha256": "7ca58a3c1ce6b7747f0480f2b087931bd0e2886d68f092c45acd03c5836ace85"
+      "sha256": "742c20468a5680be8fd2ea54a203307849a3b7766a6854592a4750ef897c3278"
     },
     {
       "name": "deepcat.tsv",
@@ -91,7 +91,7 @@
       "bytes": 352230,
       "rows": 1244,
       "columns": 42,
-      "sha256": "32cac6cbf304e6efbf11a0248be9b585ee29c169e3f729dd3e6b434648aa553b"
+      "sha256": "3ff75082ba4ae9e49f359b15135090ad9aae6272aa091f68cb7272299839fcb7"
     },
     {
       "name": "orgs.tsv",
@@ -102,7 +102,7 @@
       "bytes": 712172,
       "rows": 4146,
       "columns": 17,
-      "sha256": "9aebbf3059457d202621a15a746033a8d9a008c366f3286c6484a2ec85f908aa"
+      "sha256": "7a221d045ac16213120e110782f586e0ea29e4761daeb733cf68cf879fa2c96c"
     },
     {
       "name": "sites.tsv",
@@ -113,7 +113,7 @@
       "bytes": 125822,
       "rows": 712,
       "columns": 18,
-      "sha256": "3075ae7639661628a8e0d2bfcae2b880d307a4d2c6ef3a272bc6fdc4e24b1929"
+      "sha256": "82588d9aef69112dcadfaf03ef78a8c9b8fac4c81345a4d24af14a0a1835ac4a"
     },
     {
       "name": "lp.tsv",
@@ -124,7 +124,7 @@
       "bytes": 367898,
       "rows": 2807,
       "columns": 17,
-      "sha256": "5729cc863427ef41efb3db30e2c1ac5400c24db4a1d0456caafcf20e513bd066"
+      "sha256": "6434a0b58cb9662b688ebb7eb8b76c152f7b400f15c6347152a0cc36f6f86725"
     }
   ]
 }
