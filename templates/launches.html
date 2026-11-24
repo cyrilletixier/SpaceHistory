@@ -84,6 +84,7 @@
           <tr>
             <th><button type="button" data-sort="date">Date</button></th>
             <th><button type="button" data-sort="tag">Mission / tag</button></th>
+            <th><button type="button" data-sort="crewed">Habité</button></th>
             <th><button type="button" data-sort="launcher">Lanceur</button></th>
             <th><button type="button" data-sort="site">Site</button></th>
             <th><button type="button" data-sort="agency">Agence</button></th>
@@ -128,19 +129,20 @@
       <strong>Destination</strong> : famille d'orbite déduite de <code>OpOrbit</code>
       (<code>LLEO/I</code> → <code>LEO</code>) ; un vol à destination mixte affiche plusieurs
       familles, et un code d'orbite inconnu reste affiché tel quel.
-      <strong>Vol habité</strong> : voir la note ci-dessous.
     </p>
 
     <p class="note" id="note-crewed">
-      <strong>Vol habité</strong> : le GCAT encode la nature du vol dans le champ
-      <code>Type</code> de ses charges utiles. Le <em>2e</em> caractère vaut <code>H</code>
-      quand le vol emportait un équipage (<code>PH-H</code> pour Shenzhou 5), et le
-      <em>4e</em> caractère <code>H</code> signale seulement un véhicule <em>habitable</em> :
-      Shenzhou 1 à 4 et Crew Dragon Demo-1 le portent sans avoir eu personne à bord, Buran
-      n'en porte aucun. C'est donc le 2e caractère qui est lu ici. Un vol est marqué habité dès
-      qu'une de ses charges utiles porte ce marqueur — ce qui évite de compter sept fois une
-      mission navette —, échecs compris : un vol habité qui échoue reste un vol habité.
-      {{ stats.crewed | int_fr }} vols sur {{ stats.launches | int_fr }} sont dans ce cas.
+      <strong>Vol habité</strong> — colonne « Habité » (triable), filtre « Équipage » et note
+      ci-dessous : le GCAT encode la nature du vol dans le champ <code>Type</code> de ses
+      charges utiles. Le <em>2e</em> caractère vaut <code>H</code> quand le vol emportait un
+      équipage (<code>PH-H</code> pour Shenzhou 5), et le <em>4e</em> caractère <code>H</code>
+      signale seulement un véhicule <em>habitable</em> : Shenzhou 1 à 4 et Crew Dragon Demo-1
+      le portent sans avoir eu personne à bord, Buran n'en porte aucun. C'est donc le 2e
+      caractère qui est lu ici. Un vol est marqué habité dès qu'une de ses charges utiles porte
+      ce marqueur — ce qui évite de compter sept fois une mission navette —, échecs compris :
+      un vol habité qui échoue reste un vol habité. {{ stats.crewed | int_fr }} vols sur
+      {{ stats.launches | int_fr }} sont dans ce cas ; un vol sans équipage affiche « — »
+      plutôt qu'un « non » explicite, l'écrasante majorité des lignes étant dans ce cas.
     </p>
   </section>
 
