@@ -9,7 +9,10 @@
 
    `cr` vaut 1 pour un vol habité. Le marqueur vient du GCAT (2e caractère du
    champ `Type` des charges utiles), pas d'une liste tenue à la main : le build
-   l'a déjà agrégé au vol, le navigateur se contente de filtrer et d'afficher. */
+   l'a déjà agrégé au vol, le navigateur se contente de filtrer et d'afficher.
+   Il dispose pour cela de sa propre colonne « Habité », triable, plutôt qu'une
+   pastille noyée dans la colonne des missions : un lecteur qui cherche à savoir
+   si un tir était habité ne devrait pas avoir à déchiffrer un tag. */
 
 const fmt = new Intl.NumberFormat('fr-FR');
 
@@ -133,13 +136,16 @@ function renderPager() {
   add('›', state.page + 1, { disabled: state.page >= pages });
 }
 
-/* Pastille d'équipage, affichée à côté du tag de mission.
+/* Cellule « Habité » : la colonne qui porte l'information, au lieu d'une
+   pastille collée au tag de mission. Un vol non habité affiche « — » et non un
+   « non » explicite : la colonne est faite pour repérer les vols habités, et
+   l'immense majorité des 5 000 lignes ne l'est pas.
    Le survol rappelle d'où vient le marqueur : il est lu dans le catalogue, pas
    saisi à la main — la règle reste donc vérifiable à la source. */
-function crewBadge(item) {
-  if (!item.cr) return '';
+function crewedCell(item) {
+  if (!item.cr) return '<span class="dim">—</span>';
   const tip = 'Vol habité — GCAT : 2e caractère du champ Type des charges utiles';
-  return ` <span class="pill" title="${esc(tip)}">habité</span>`;
+  return `<span class="pill ok" title="${esc(tip)}">habité</span>`;
 }
 
 /* Cellule « charges utiles » : compteur cliquable vers la page filtrée.
@@ -180,7 +186,8 @@ function render() {
   tbody.innerHTML = slice.map((item) => `
     <tr>
       <td class="mono">${esc(item.d)}</td>
-      <td>${esc(item.t)}${crewBadge(item)}</td>
+      <td>${esc(item.t)}</td>
+      <td>${crewedCell(item)}</td>
       <td>${esc(item.lv) || '—'}</td>
       <td${item.sc ? ` title="Code GCAT : ${esc(item.sc)}"` : ''}>${esc(item.s) || '—'}</td>
       <td class="dim"${item.ac ? ` title="Code GCAT : ${esc(item.ac)}"` : ''}>${esc(item.a) || '—'}</td>
