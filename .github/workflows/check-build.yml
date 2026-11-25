@@ -65,6 +65,13 @@ jobs:
             grep -q "id=\"$id\"" _site/launches.html \
               || { echo "contrôle manquant dans launches.html : $id" ; exit 1 ; }
           done
+          # La colonne « Habité » est écrite par le template (en-tête triable)
+          # mais remplie par explorer.js : si l'en-tête disparaît, le marqueur
+          # reste dans le JSON sans qu'aucune ligne du site ne l'affiche.
+          grep -q 'data-sort="crewed"' _site/launches.html \
+            || { echo "colonne « Habité » triable absente de launches.html" ; exit 1 ; }
+          grep -q 'crewedCell' _site/assets/js/explorer.js \
+            || { echo "rendu de la colonne « Habité » absent de explorer.js" ; exit 1 ; }
           echo "--- poids ---"
           du -sh _site
           du -h _site/data/launches.json _site/data/charges-utiles.json
