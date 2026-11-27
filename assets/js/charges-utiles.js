@@ -2,7 +2,10 @@
    Lit data/charges-utiles.json : une entrée par charge utile — `satcat.tsv`
    pour les objets catalogués en orbite, `ftocat.tsv` pour les charges perdues
    lors d'un échec. `?vol=<Launch_Tag>` restreint la vue à un lancement : c'est
-   la cible du lien de la colonne « charges utiles » de l'explorateur.
+   la cible du lien de la colonne « objets / charges utiles » de l'explorateur.
+   Le bandeau du vol affiche alors, quand le lancement est reconnu dans
+   data/launches.json, combien d'objets du tir ne sont pas des charges utiles
+   listées (étages, débris).
 
    `cr` vaut 1 quand le vol emportait un équipage (marqueur du GCAT, 2e
    caractère du champ `Type`), `ty` conserve le code `Type` brut pour que la
@@ -17,6 +20,11 @@ const state = {
 
 let payloads = [];
 let view = [];
+
+/* Lancement filtré, retrouvé dans data/launches.json quand `?vol=` désigne un
+   tag exact : il fournit le nombre total d'objets du tir, donc le nombre
+   d'objets qui ne sont pas des charges utiles listées ici. */
+let launch = null;
 
 const $ = (id) => document.getElementById(id);
 
@@ -62,7 +70,10 @@ function matches(item) {
   return true;
 }
 
-/* Bandeau de rappel : d'où l'on vient, et comment revenir à tout le catalogue. */
+/* Bandeau de rappel : d'où l'on vient, et comment revenir à tout le catalogue.
+   Quand le vol est reconnu, il dit aussi combien d'objets du tir ne sont pas
+   des charges utiles : étages, débris, composants — tout ce que le catalogue
+   ne range pas sous `Type` commençant par `P`. */
 function renderBanner() {
   const banner = $('vol-banner');
   if (!banner) return;
@@ -73,8 +84,21 @@ function renderBanner() {
     return;
   }
 
+  let extra = '';
+  const needle = state.vol.trim().toLowerCase();
+  if (launch && (launch.t || '').toLowerCase() === needle) {
+    const objects = launch.o || 0;
+    const listed = launch.pc || 0;
+    const unlisted = Math.max(0, objects - listed);
+    extra = ` — ${fmt.format(objects)} objet(s) au lancement, dont ${fmt.format(listed)} charge(s) utile(s)`
+      + (unlisted > 0
+        ? ` ; ${fmt.format(unlisted)} objet(s) non listé(s) ici (étages, débris)`
+        : ' ; aucun objet non listé');
+  }
+
   banner.hidden = false;
   banner.innerHTML = 'Vol filtré : <span class="pill mono">' + esc(state.vol) + '</span>'
+    + extra
     + ' — <a href="launches.html">explorateur des lancements</a>'
     + ' · <a href="charges-utiles.html">voir tous les vols</a>';
 }
@@ -284,6 +308,24 @@ async function boot() {
 
     const payload = await response.json();
     payloads = payload.payloads || [];
+
+    /* Le lancement filtré, pour le décompte des objets non listés : il est
+       cherché dans data/launches.json, uniquement quand un vol est demandé.
+       Un échec de chargement ne casse rien : le bandeau se contente de ne pas
+       afficher le décompte. */
+    if (state.vol) {
+      try {
+        const launchResponse = await fetch('data/launches.json', { cache: 'no-cache' });
+        if (launchResponse.ok) {
+          const all = (await launchResponse.json()).launches || [];
+          launch = all.find((item) => item.t === state.vol)
+            || all.find((item) => (item.t || '').toLowerCase() === state.vol.toLowerCase())
+            || null;
+        }
+      } catch (error) {
+        launch = null;
+      }
+    }
 
     fillControls();
     bind();
