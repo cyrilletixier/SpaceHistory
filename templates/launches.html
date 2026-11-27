@@ -11,8 +11,8 @@
         Les {{ stats.launches | int_fr }} tentatives de lancement orbital recensées par le
         GCAT depuis le 4 octobre 1957, dont {{ stats.crewed | int_fr }} vols habités. Une
         ligne = un lancement : les objets d'un même tir sont agrégés par
-        <code>Launch_Tag</code> au moment du build, et le nombre d'objets reste affiché
-        séparément.
+        <code>Launch_Tag</code> au moment du build ; objets et charges utiles partagent une
+        seule colonne cliquable.
       </p>
     </div>
 
@@ -88,8 +88,7 @@
             <th><button type="button" data-sort="launcher">Lanceur</button></th>
             <th><button type="button" data-sort="site">Site</button></th>
             <th><button type="button" data-sort="agency">Agence</button></th>
-            <th class="num"><button type="button" data-sort="objects">Objets</button></th>
-            <th class="num"><button type="button" data-sort="payloads">Charges utiles</button></th>
+            <th class="num"><button type="button" data-sort="objects">Objets / charges utiles</button></th>
             <th class="num"><button type="button" data-sort="mass">Masse en orbite</button></th>
             <th><button type="button" data-sort="destination">Destination</button></th>
             <th><button type="button" data-sort="status">Statut</button></th>
@@ -118,8 +117,11 @@
     </p>
 
     <p class="note">
-      <strong>Charges utiles</strong> : le compteur renvoie vers la page des charges utiles
-      filtrée sur le vol (<code>charges-utiles.html?vol=…</code>).
+      <strong>Objets / charges utiles</strong> : les deux compteurs d'un même tir partagent
+      une colonne — objets lancés, puis charges utiles après la barre oblique. Un clic sur
+      l'ensemble renvoie vers la page des charges utiles filtrée sur le vol
+      (<code>charges-utiles.html?vol=…</code>), qui affiche aussi combien d'objets du tir
+      (étages, débris) ne sont pas des charges utiles listées.
       <strong>Masse en orbite</strong> : somme du champ <code>Mass</code> de
       <code>satcat.tsv</code> pour les charges utiles (= <code>Type</code> commençant par
       <code>P</code>) effectivement cataloguées en orbite ; le <code>0</code> de remplissage du
