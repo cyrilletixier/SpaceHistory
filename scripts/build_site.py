@@ -1353,7 +1353,7 @@ def main() -> int:
     write_json(
         out_dir / "data" / "charges-utiles.json",
         {
-            "source": "GCAT — satcat.tsv + ftocat.tsv (Jonathan McDowell)",
+            "source": "GCAT — satcat.tsv + ftocat.tsv + psatcat.tsv (Jonathan McDowell)",
             "generated": manifest.get("generated_at"),
             "statuts": {
                 item["status_code"]: item["status"]
