@@ -21,8 +21,8 @@ Fichiers utilisés (copie brute dans `data/gcat/`) :
 | Fichier | URL source | Usage dans ce dépôt |
 |---|---|---|
 | `launchlog.tsv` | `…/tsv/derived/launchlog.tsv` | page **Lancements** (agrégé par `Launch_Tag`) et tous les classements |
-| `psatcat.tsv` | `…/tsv/cat/psatcat.tsv` | explorateur objet par objet (à venir) |
-| `satcat.tsv` | `…/tsv/cat/satcat.tsv` | analyses à venir (masse, orbite) |
+| `psatcat.tsv` | `…/tsv/cat/psatcat.tsv` | nom d'usage des charges utiles (page **Charges utiles**) |
+| `satcat.tsv` | `…/tsv/cat/satcat.tsv` | masse, orbite, équipage et statut actuel (`Status`, `DDate`) des charges utiles |
 | `active.tsv` | `…/tsv/derived/active.tsv` | satellites actifs (`objets.html`) |
 | `currentcat.tsv` | `…/tsv/derived/currentcat.tsv` | objets en orbite, débris compris |
 | `geotab.tsv` | `…/tsv/derived/geotab.tsv` | journal GEO |
