@@ -1,0 +1,785 @@
+# Codes GCAT à traduire
+
+Inventaire des valeurs réellement présentes, par ordre de fréquence.
+Sert de base à `data/lookups/codes.tsv`.
+
+## `launchlog.tsv` / `Launch_Code`
+
+- valeurs distinctes : **25** sur **32258** lignes
+- listées ci-dessous (seuil 1) : **25** codes, soit **100.0 %** des lignes
+
+```
+OS	30505
+OF	937
+DS	446
+OF40	117
+OS89	73
+OS95	52
+OS75	46
+OS85	19
+NS	13
+XS	11
+OF50	6
+OF25	6
+OS80	6
+OS66	3
+OF45	3
+OF44	2
+OF20	2
+OS65	2
+NF	2
+DS75	2
+OF70	1
+OS60	1
+OS90	1
+OF60	1
+OF30	1
+```
+
+## `launchlog.tsv` / `LVState`
+
+- valeurs distinctes : **20** sur **32258** lignes
+- listées ci-dessous (seuil 1) : **20** codes, soit **100.0 %** des lignes
+
+```
+US	21037
+SU	4029
+CN	2417
+RU	2093
+F	1260
+IN	593
+J	336
+NZ	291
+I-ESA	68
+KR	54
+IR	24
+IL	13
+I	12
+KP	9
+D	7
+I-ELDO	5
+CYM	4
+UK	3
+BR	2
+AU	1
+```
+
+## `launchlog.tsv` / `SatState`
+
+- valeurs distinctes : **124** sur **32258** lignes
+- listées ci-dessous (seuil 1) : **124** codes, soit **100.0 %** des lignes
+
+```
+US	20332
+SU	4052
+CN	2316
+RU	1417
+UK	849
+J	483
+F	216
+D	209
+IN	193
+I	164
+CA	139
+KR	122
+I-ESA	112
+L	112
+E	106
+AU	76
+TR	66
+IL	65
+I-INT	64
+UY	59
+BR	56
+FI	55
+TW	53
+I-EU	42
+UAE	41
+SG	34
+IR	34
+GR	32
+PL	32
+NZ	31
+ID	29
+CH	29
+N	28
+MX	27
+NL	25
+AR	25
+S	22
+I-EUT	20
+T	20
+DK	20
+SA	20
+HK	17
+I-EUM	16
+MY	16
+P	15
+CZ	15
+EG	15
+B	15
+I-ARAB	14
+PK	14
+MN	13
+UA	12
+CL	11
+HU	11
+LT	11
+ZA	10
+I-INM	9
+PH	9
+KP	9
+KZ	9
+BGN	9
+I-ESRO	8
+I-NATO	8
+DZ	8
+VN	8
+BY	7
+AT	7
+RW	7
+NG	6
+I-ELDO	5
+MA	5
+RO	5
+PE	5
+SK	5
+NP	5
+HKUK	4
+EC	4
+EE	4
+SI	4
+CO	3
+BM	3
+VE	3
+AZ	3
+QA	3
+MC	3
+KW	3
+OM	3
+CSSR	2
+I-RASC	2
+MU	2
+PR	2
+BD	2
+IE	2
+AO	2
+KE	2
+BT	2
+ET	2
+PY	2
+TN	2
+AM	2
+ZW	2
+DJ	2
+CSFR	1
+BO	1
+PG	1
+LA	1
+GH	1
+LV	1
+CR	1
+JO	1
+LK	1
+SD	1
+GT	1
+MYM	1
+MD	1
+UG	1
+SN	1
+HR	1
+BW	1
+BH	1
+SB	1
+ME	1
+ESIB	1
+BG	1
+```
+
+## `launchlog.tsv` / `Agency`
+
+- valeurs distinctes : **136** sur **32258** lignes
+- listées ci-dessous (seuil 20) : **67** codes, soit **98.5 %** des lignes
+
+```
+SPX	16658
+RVSN	2162
+UNKS	1854
+AE	781
+SAST	763
+CALT	751
+AFSSD	695
+ULAL	517
+SAMSO	503
+JSC/MSFC	493
+ISRO	471
+STSM	464
+FKA	402
+VKSR	367
+RLABN	291
+NGIS	246
+OSC	235
+GKLS	234
+GSFC	223
+KVR	188
+KHRU	173
+KTRAS/RVSNR	161
+BLS	158
+CGWIC/SAST	158
+ZKYT	153
+MHI	149
+VVKO	138
+AFSD	131
+RVSNR	120
+XIDO	109
+CZHJ	101
+ILSK	99
+ULAB	97
+EXPACE	91
+MDSSC	86
+MSFC	83
+AFBMD	82
+ZHSH/CALT	74
+RSLP	73
+NSIL	73
+JAXA	72
+LERC	71
+ZHSH/SAST	68
+GKLS/FKA	66
+ESA	61
+NASDA	57
+ULAD	57
+UNKSR	53
+LANDSP	53
+LMA	50
+LARCN	49
+KARI	47
+ISRO/NSIL	47
+ISAS	44
+VORB	44
+CGWIC/CALT	42
+ILSL	34
+ASTRV	32
+RAKA	30
+FFLY	30
+EUROK	28
+LERC/AFSSD	26
+10ADS	26
+SEALP	26
+DFK	24
+OSCC	23
+LERC/SAMSO	22
+```
+
+## `launchlog.tsv` / `Launch_Site`
+
+- valeurs distinctes : **76** sur **32258** lignes
+- listées ci-dessous (seuil 20) : **36** codes, soit **99.3 %** des lignes
+
+```
+CC	9239
+VSFBS	6283
+KSC	2770
+NIIP-53	2513
+GIK-5	1382
+NIIP-5	1113
+VS	1014
+CSG	864
+JQ	817
+V	778
+TYSC	597
+SHAR	591
+VOST	534
+GIK-1	518
+MARS	434
+XSC	403
+GTsP-4	340
+MAHIA	291
+HCSLS	275
+TNSC	248
+STB	147
+WEN	144
+HHAI	135
+YAS	93
+PA	92
+GNIIPV	67
+NARO	47
+KASC	44
+KLA	36
+MHV	35
+WIMB	34
+USC	33
+VSFB	31
+WI	28
+PSCA	28
+YJ	25
+```
+
+## `launchlog.tsv` / `SatOwner`
+
+- valeurs distinctes : **2145** sur **32258** lignes
+- listées ci-dessous (seuil 40) : **87** codes, soit **78.5 %** des lignes
+
+```
+SPXS	13182
+PVO	1017
+PLAN	572
+GUKOSR	543
+ONEWEBN	526
+KUIP	438
+NRO/SAFSP	371
+NROC	324
+MOM	318
+GUKOS	317
+NRO/CIA	315
+ZXW	280
+YUANX	275
+UNKS	271
+GSFC	259
+JSC	255
+RKKE	229
+SFSSC	203
+SPIRE	168
+VMF	159
+CGSTL	158
+PLABS	155
+AFSSD	145
+NPOE	145
+ISRO	134
+MORF	129
+TSUKOS	128
+ZZB	123
+OKB10	118
+ONEWEB	114
+STAN/ARC	111
+SWARM	111
+SDA	111
+CORN	110
+CASC	109
+PRIR	106
+ESA	106
+SPX	104
+AFSMC	102
+ZLZB	99
+GRU	96
+JPL	94
+VKS	93
+IRID	88
+IRIDS	87
+NRO	86
+CNSA	86
+IKI/BABTS	84
+MSFC	82
+OKB1	75
+MSC	73
+SAMSO	72
+GEESP	70
+NRO/NRL	69
+TSSKB	68
+SWARMX	68
+ORBC	65
+INTEL	64
+SAFSP	63
+SITRO	63
+ARC	62
+CAST	62
+AERO	61
+NRL	60
+STP	58
+VVKOV	58
+URUGUS	56
+GLOBT	52
+JAXA	51
+MSVYAZ	50
+RKA	49
+HE360	49
+YUZH	48
+CMSEO	46
+KVR	46
+TSKBEM	45
+KVR/IACG	45
+YYAO	45
+CNES	44
+NASDA	44
+UNKSR	44
+NOAA	43
+ICEYE	42
+PKO	41
+VMFR	41
+LARCN	40
+GUOG	40
+```
+
+## `active.tsv` / `Owner`
+
+- valeurs distinctes : **1003** sur **17324** lignes
+- listées ci-dessous (seuil 20) : **45** codes, soit **85.7 %** des lignes
+
+```
+SPXS	11187
+ONEWEBN	523
+KUIP	392
+NROC	302
+ZXW	279
+YUANX	253
+SFSSC	201
+PLAN	129
+SDA	111
+ONEWEB	109
+ZLZB	84
+IRIDS	80
+CNSA	71
+ZZB	69
+GEESP	65
+CGSTL	62
+ISRO	55
+CAST	50
+AFSMC	49
+VVKOV	48
+SITRO	47
+CASC	45
+HE360	43
+GSFC	41
+SPIRE	41
+B1440	36
+YYAO	35
+ESA	33
+CENTI	32
+ORBC	29
+ICEYE	29
+GUOG	28
+GLOBL	27
+KINEIS	25
+ASI/OHBI	24
+EUTSA	23
+GSAEU	22
+URUGUS	22
+TIANMU	22
+INTELU	21
+SAST	21
+DORBIT	21
+O3BS	21
+STTS	20
+ONEWEBE	20
+```
+
+## `active.tsv` / `Category`
+
+- valeurs distinctes : **56** sur **17324** lignes
+- listées ci-dessous (seuil 1) : **56** codes, soit **100.0 %** des lignes
+
+```
+COM	14144
+IMG	1020
+TECH	589
+IMG-R	267
+NAV	253
+SIG	236
+MET	111
+SCI	96
+EOSCI	75
+AST	64
+COM/MET-RO	61
+MET-RO	50
+PLAN	40
+NAV/COM	38
+SS	34
+EW	33
+SIG*	32
+COM?	31
+EW*	19
+COM*	14
+IMG?	14
+SIG?*	11
+IMG*	10
+COM/TECH	7
+SIG?	7
+GEOD	5
+IMG-R*	5
+TECH?	5
+CAL	5
+IMG-R?	4
+TECH*	4
+SCI/PLAN	3
+TECH/AST	3
+MGRAV	3
+SIG/IMG	3
+IMG/SCI	2
+AST/TECH	2
+TECH/EW	2
+AST/SCI	2
+IMG/COM	2
+IMG?*	2
+EW?	2
+EOSCI/SCI	1
+EOSCI/AST	1
+MET/IMG-R	1
+BIO	1
+SCI/AST	1
+AST/EW	1
+COM/SCI	1
+SCI/MET	1
+TECH/IMG-R?	1
+TECH/COM	1
+SCI/COM	1
+BIO/TECH	1
+COM/SIG	1
+COM/MET	1
+```
+
+## `active.tsv` / `Class`
+
+- valeurs distinctes : **8** sur **17324** lignes
+- listées ci-dessous (seuil 1) : **8** codes, soit **100.0 %** des lignes
+
+```
+B	14683
+D	1334
+C	970
+A	316
+-	7
+BD	5
+CD	5
+CB	4
+```
+
+## `active.tsv` / `MVR`
+
+- valeurs distinctes : **3** sur **17324** lignes
+- listées ci-dessous (seuil 1) : **3** codes, soit **100.0 %** des lignes
+
+```
+M	14988
+-	2335
+N	1
+```
+
+## `active.tsv` / `OpOrbit`
+
+- valeurs distinctes : **26** sur **17324** lignes
+- listées ci-dessous (seuil 1) : **26** codes, soit **100.0 %** des lignes
+
+```
+LLEO/I	10898
+LLEO/S	3260
+LLEO/P	637
+LEO/I	606
+LEO/P	450
+LEO/S	416
+GEO/S	325
+MEO	197
+GEO/D	122
+-	93
+GEO/I	57
+HEO	38
+EEO	26
+GEO/NS	26
+CLO	25
+GEO/T	25
+VHEO	22
+HEO/M	21
+GEO/ID	21
+LEO/E	19
+LEO/R	13
+LLEO/E	11
+GTO	7
+DSO	4
+LLEO/R	4
+SO	1
+```
+
+## `satcat.tsv` / `Status`
+
+- valeurs distinctes : **21** sur **69999** lignes
+- listées ci-dessous (seuil 1) : **21** codes, soit **100.0 %** des lignes
+
+```
+R	33477
+O	32085
+OX	1176
+L	1074
+DK	473
+DSO	461
+N	337
+AR	296
+D	183
+E	78
+TFR	78
+AO	65
+GRP	63
+ATT	46
+DSA	45
+C	23
+ERR	22
+R?	13
+L?	2
+REL	1
+EVA DP	1
+```
+
+## `satcat.tsv` / `State`
+
+- valeurs distinctes : **123** sur **69999** lignes
+- listées ci-dessous (seuil 1) : **123** codes, soit **100.0 %** des lignes
+
+```
+US	28857
+SU	16148
+CN	9319
+RU	9183
+F	1495
+J	933
+UK	835
+IN	775
+NZ	184
+I-ESA	174
+D	168
+CA	150
+I	150
+L	109
+KR	101
+E	87
+AU	76
+IL	74
+TR	63
+I-INT	61
+UY	55
+FI	52
+TW	51
+BR	42
+I-EU	41
+IR	40
+UAE	37
+ID	30
+SG	30
+CH	29
+PL	28
+N	25
+NL	24
+I-EUM	24
+GR	23
+S	21
+MX	20
+SA	20
+AR	19
+I-EUT	18
+DK	18
+T	17
+MY	16
+HK	16
+I-ESRO	15
+I-ARAB	15
+CZ	15
+EG	15
+B	15
+PK	14
+MN	13
+HU	11
+LT	11
+ZA	10
+I-INM	9
+PH	9
+KZ	9
+BGN	9
+I-NATO	8
+P	8
+UA	8
+CL	8
+DZ	8
+KP	8
+VN	7
+RW	7
+NG	6
+BY	6
+AT	6
+MA	5
+PE	5
+SK	5
+HKUK	4
+RO	4
+EC	4
+CYM	3
+CO	3
+BM	3
+VE	3
+AZ	3
+EE	3
+QA	3
+MC	3
+NP	3
+SI	3
+KW	3
+CSSR	2
+I-RASC	2
+MU	2
+PR	2
+IE	2
+BD	2
+AO	2
+KE	2
+BT	2
+ET	2
+TN	2
+AM	2
+ZW	2
+DJ	2
+CSFR	1
+BO	1
+PG	1
+LA	1
+LV	1
+GH	1
+CR	1
+JO	1
+LK	1
+SD	1
+GT	1
+PY	1
+MYM	1
+MD	1
+UG	1
+SN	1
+OM	1
+HR	1
+BW	1
+BH	1
+SB	1
+ME	1
+ESIB	1
+```
+
+## `satcat.tsv` / `OpOrbit`
+
+- valeurs distinctes : **27** sur **69999** lignes
+- listées ci-dessous (seuil 1) : **27** codes, soit **100.0 %** des lignes
+
+```
+LLEO/I	29480
+LEO/I	10756
+LEO/S	10384
+LLEO/S	7056
+LEO/P	2510
+MEO	2083
+HEO	1743
+GTO	1705
+GEO/S	928
+LLEO/P	904
+HEO/M	527
+GEO/D	489
+EEO	221
+CLO	197
+GEO/ID	154
+VHEO	141
+LLEO/R	116
+LEO/R	113
+LEO/E	107
+GEO/I	93
+GEO/NS	83
+LLEO/E	82
+DSO	56
+GEO/T	36
+TA	18
+SO	9
+-	8
+```
+
