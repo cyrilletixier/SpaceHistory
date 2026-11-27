@@ -85,8 +85,8 @@ Le build échoue explicitement si `data/gcat/launchlog.tsv` est absent.
 | `active.tsv` | `derived/` | satellites actuellement actifs | `objets.html` |
 | `currentcat.tsv` | `derived/` | objets actuellement en orbite, débris compris | — (à venir) |
 | `geotab.tsv` | `derived/` | journal des satellites géostationnaires | — (à venir) |
-| `satcat.tsv` | `cat/` | catalogue complet de tous les objets spatiaux | **masse et orbite** des charges utiles, **marqueur d'équipage** |
-| `psatcat.tsv` | `cat/` | catalogue des charges utiles (programme, catégorie, commentaire) | — (à venir) |
+| `satcat.tsv` | `cat/` | catalogue complet de tous les objets spatiaux | **masse, orbite et statut actuel** des charges utiles, **marqueur d'équipage** |
+| `psatcat.tsv` | `cat/` | catalogue des charges utiles (programme, catégorie, commentaire) | **nom d'usage** des charges utiles |
 | `ftocat.tsv` | `cat/` | catalogue des échecs de mise en orbite | charges utiles perdues |
 | `deepcat.tsv` | `cat/` | catalogue de l'espace lointain | — (à venir) |
 | `sites.tsv` | `tables/` | **référence** : code de site → nom, coordonnées | libellés des sites |
@@ -169,6 +169,22 @@ L'explorateur des lancements porte des colonnes calculées au build à partir de
   vers `charges-utiles.html?vol=<Launch_Tag>`, dont le bandeau affiche combien d'objets
   du tir (étages, débris) ne sont pas des charges utiles listées. Les noms restent dans
   `launches.json` (champ `n`) pour que la recherche de l'explorateur continue de fonctionner.
+- **Statut d'une charge utile** = état **actuel**, lu dans le champ `Status` de `satcat.tsv`,
+  et non déduit de la table d'origine : figurer dans `satcat.tsv` veut seulement dire « a été
+  mis en orbite » (Sputnik 1 y est, avec `R` : rentré le 4 janvier 1958). Ce champ nomme
+  l'événement qui clôt la phase en cours de l'objet, et `DDate` en donne la date (vide tant
+  que la phase dure). Les codes sont regroupés selon la documentation du GCAT
+  (*phases.html*) : `O`, `OX`, `AO`, `N` → **en orbite** ; `R`, `AR`, `D` → **rentré** ;
+  `L`, `AL`, `LF` → **posé** ; `DSO`, `DSA` → **espace lointain** ; `DK`, `GRP`, `ATT`,
+  `TFR` → **rattaché** à un autre objet ; `E`, `C` → **détruit** ; les charges de
+  `ftocat.tsv` restent en **échec**. Le suffixe `?` ne change pas la famille. Un code non
+  rangé s'affiche tel quel et le journal du build le signale. Le code brut et `DDate`
+  restent au survol ; la table code → statut est écrite une seule fois dans
+  `charges-utiles.json` (champ `statuts`).
+- **Noms** : le nom principal reste le `Name` du GCAT, tiré de l'opérateur (`1-y ISZ`).
+  Dessous s'affichent les autres noms du catalogue quand ils diffèrent : `PLName` (nom
+  constructeur, `PS-1`) et le `Name` de `psatcat.tsv` (nom d'usage, `First Sputnik`,
+  crochets de nom non officiel retirés). La recherche de la page porte sur tous.
 
 ### Vols habités
 
