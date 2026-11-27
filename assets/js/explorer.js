@@ -4,8 +4,10 @@
    Les colonnes `s`/`a` portent des libellés lisibles, `sc`/`ac` les codes GCAT,
    `dc` les codes d'orbite bruts derrière le libellé de destination `dd`.
 
-   La colonne « charges utiles » ne liste plus les noms (ils restent dans `n`,
-   pour la recherche) : elle renvoie vers charges-utiles.html?vol=<tag>.
+   Les colonnes « objets » et « charges utiles » sont fusionnées : une seule
+   cellule cliquable renvoie vers charges-utiles.html?vol=<tag>, le nombre
+   d'objets puis celui des charges utiles. Les noms restent dans `n`, pour la
+   recherche.
 
    `cr` vaut 1 pour un vol habité. Le marqueur vient du GCAT (2e caractère du
    champ `Type` des charges utiles), pas d'une liste tenue à la main : le build
@@ -40,7 +42,6 @@ function sortValue(item, key) {
     case 'site': return (item.s || '').toLowerCase();
     case 'agency': return (item.a || '').toLowerCase();
     case 'objects': return item.o;
-    case 'payloads': return item.pc || 0;
     case 'mass': return item.m || -1;
     case 'destination': return (item.dd || '').toLowerCase();
     case 'crewed': return item.cr || 0;
@@ -148,17 +149,24 @@ function crewedCell(item) {
   return `<span class="pill ok" title="${esc(tip)}">habité</span>`;
 }
 
-/* Cellule « charges utiles » : compteur cliquable vers la page filtrée.
-   Le survol rappelle combien de charges sont cataloguées en orbite. */
-function payloadCell(item) {
-  if (!item.pc) return '<span class="dim">—</span>';
+/* Cellule « objets / charges utiles » : les deux compteurs d'un même tir dans
+   une seule cellule, cliquable vers la page filtrée sur le vol. Le nombre
+   d'objets du vol (étages, débris compris) vient d'`o`, celui des charges
+   utiles de `pc` ; le survol rappelle combien sont cataloguées en orbite. */
+function objectsCell(item) {
+  const objects = item.o || 0;
+  const payloads = item.pc || 0;
+  if (!objects && !payloads) return '<span class="dim">—</span>';
 
   const url = `charges-utiles.html?vol=${encodeURIComponent(item.t)}`;
-  const tip = item.pi && item.pi !== item.pc
-    ? `${fmt.format(item.pi)} en orbite sur ${fmt.format(item.pc)} cataloguée(s) — voir le détail`
-    : `${fmt.format(item.pc)} charge(s) utile(s) — voir le détail`;
+  const tip = payloads
+    ? (item.pi && item.pi !== payloads
+      ? `${fmt.format(objects)} objet(s), dont ${fmt.format(payloads)} charge(s) utile(s) — ${fmt.format(item.pi)} en orbite — voir le détail`
+      : `${fmt.format(objects)} objet(s), dont ${fmt.format(payloads)} charge(s) utile(s) — voir le détail`)
+    : `${fmt.format(objects)} objet(s), aucune charge utile cataloguée — voir le détail`;
 
-  return `<a class="pill" href="${url}" title="${esc(tip)}">${fmt.format(item.pc)}</a>`;
+  const payloadsLabel = payloads ? ` <span class="dim">/ ${fmt.format(payloads)}</span>` : '';
+  return `<a class="pill" href="${url}" title="${esc(tip)}">${fmt.format(objects)}</a>${payloadsLabel}`;
 }
 
 /* Cellule « masse en orbite » : une somme inconnue s'affiche « — », pas « 0 ». */
@@ -191,8 +199,7 @@ function render() {
       <td>${esc(item.lv) || '—'}</td>
       <td${item.sc ? ` title="Code GCAT : ${esc(item.sc)}"` : ''}>${esc(item.s) || '—'}</td>
       <td class="dim"${item.ac ? ` title="Code GCAT : ${esc(item.ac)}"` : ''}>${esc(item.a) || '—'}</td>
-      <td class="num">${fmt.format(item.o)}</td>
-      <td class="num">${payloadCell(item)}</td>
+      <td class="num">${objectsCell(item)}</td>
       <td class="num">${massCell(item)}</td>
       <td>${destinationCell(item)}</td>
       <td>${esc(item.st)}${item.c ? ` <span class="mono dim">${esc(item.c)}</span>` : ''}</td>
@@ -316,7 +323,7 @@ function bind() {
       if (state.sort === key) state.dir = -state.dir;
       else {
         state.sort = key;
-        state.dir = ['objects', 'payloads', 'mass', 'date', 'crewed'].includes(key) ? -1 : 1;
+        state.dir = ['objects', 'mass', 'date', 'crewed'].includes(key) ? -1 : 1;
       }
       state.page = 1;
       apply();

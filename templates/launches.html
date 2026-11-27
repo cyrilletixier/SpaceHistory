@@ -81,8 +81,7 @@
             <th><button type="button" data-sort="launcher">Lanceur</button></th>
             <th><button type="button" data-sort="site">Site</button></th>
             <th><button type="button" data-sort="agency">Agence</button></th>
-            <th class="num"><button type="button" data-sort="objects">Objets</button></th>
-            <th class="num"><button type="button" data-sort="payloads">Charges utiles</button></th>
+            <th class="num"><button type="button" data-sort="objects">Objets / charges utiles</button></th>
             <th class="num"><button type="button" data-sort="mass">Masse en orbite</button></th>
             <th><button type="button" data-sort="destination">Destination</button></th>
             <th><button type="button" data-sort="status">Statut</button></th>
@@ -111,8 +110,11 @@
     </p>
 
     <p class="note">
-      <strong>Charges utiles</strong> : le compteur renvoie vers la page des charges utiles
-      filtrée sur le vol (<code>charges-utiles.html?vol=…</code>).
+      <strong>Objets / charges utiles</strong> : les deux compteurs d'un même tir partagent
+      une colonne — objets lancés, puis charges utiles après la barre oblique. Un clic sur
+      l'ensemble renvoie vers la page des charges utiles filtrée sur le vol
+      (<code>charges-utiles.html?vol=…</code>), qui affiche aussi combien d'objets du tir
+      (étages, débris) ne sont pas des charges utiles listées.
       <strong>Masse en orbite</strong> : somme du champ <code>Mass</code> de
       <code>satcat.tsv</code> pour les charges utiles (= <code>Type</code> commençant par
       <code>P</code>) effectivement cataloguées en orbite ; le <code>0</code> de remplissage du
