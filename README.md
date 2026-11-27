@@ -164,10 +164,11 @@ L'explorateur des lancements porte des colonnes calculées au build à partir de
   **Interplanétaire**. Le qualificatif après la barre oblique (`LLEO/I`, `GEO/T`) précise
   l'orbite sans en changer la famille. Un code inconnu n'est pas traduit : il s'affiche tel
   quel et le journal du build le signale, comme pour les codes d'agence.
-- **Lien vers le vol** : la colonne « charges utiles » ne recopie plus les noms ; elle
-  affiche le nombre de charges utiles et renvoie vers
-  `charges-utiles.html?vol=<Launch_Tag>`. Les noms restent dans `launches.json` (champ `n`)
-  pour que la recherche de l'explorateur continue de fonctionner.
+- **Objets / charges utiles** : les deux colonnes sont fusionnées en une seule,
+  cliquable — objets du tir, puis charges utiles après la barre oblique. Un clic renvoie
+  vers `charges-utiles.html?vol=<Launch_Tag>`, dont le bandeau affiche combien d'objets
+  du tir (étages, débris) ne sont pas des charges utiles listées. Les noms restent dans
+  `launches.json` (champ `n`) pour que la recherche de l'explorateur continue de fonctionner.
 
 ### Vols habités
 
