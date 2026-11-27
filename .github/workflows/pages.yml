@@ -37,7 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url || steps.deployment_retry_1.outputs.page_url || steps.deployment_retry_2.outputs.page_url }}
 
     steps:
       - name: Checkout
@@ -69,14 +69,42 @@ jobs:
           path: _site
           retention-days: 1
 
+      # Race connue de actions/deploy-pages (issue #451) : le premier appel peut
+      # ne pas voir l'artefact qui vient d'être téléversé (« Found 0 artifact(s) »).
+      # On réessaie le déploiement seul, avec une pause croissante — jamais
+      # l'upload, car un second artefact « github-pages » ferait échouer la
+      # recherche sur doublon.
       - name: Deploy to GitHub Pages
         id: deployment
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - name: Wait before retrying deployment
+        if: steps.deployment.outcome == 'failure'
+        run: sleep 20
+
+      - name: Deploy to GitHub Pages (retry 1)
+        id: deployment_retry_1
+        if: steps.deployment.outcome == 'failure'
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - name: Wait before retrying deployment again
+        if: steps.deployment_retry_1.outcome == 'failure'
+        run: sleep 60
+
+      - name: Deploy to GitHub Pages (retry 2)
+        id: deployment_retry_2
+        if: steps.deployment_retry_1.outcome == 'failure'
         uses: actions/deploy-pages@v4
 
       - name: Summary
         if: always()
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url || steps.deployment_retry_1.outputs.page_url || steps.deployment_retry_2.outputs.page_url }}
+          TRIGGER: ${{ github.event_name }}
         run: |
           echo '### Publication GitHub Pages' >> "$GITHUB_STEP_SUMMARY"
-          echo "- URL : ${{ steps.deployment.outputs.page_url }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Déclencheur : \`${{ github.event_name }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- URL : $PAGE_URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Déclencheur : `$TRIGGER`" >> "$GITHUB_STEP_SUMMARY"
           du -sh _site 2>/dev/null >> "$GITHUB_STEP_SUMMARY" || true
