@@ -72,6 +72,22 @@ jobs:
             || { echo "colonne « Habité » triable absente de launches.html" ; exit 1 ; }
           grep -q 'crewedCell' _site/assets/js/explorer.js \
             || { echo "rendu de la colonne « Habité » absent de explorer.js" ; exit 1 ; }
+          # Les colonnes « objets » et « charges utiles » sont fusionnées en une
+          # seule cellule cliquable : si l'en-tête fusionné disparaît, ou si
+          # l'ancienne colonne « charges utiles » revient, le lien vers la page
+          # des charges utiles se casse sans qu'aucune erreur ne le dise.
+          grep -q 'data-sort="objects"' _site/launches.html \
+            || { echo "colonne « Objets / charges utiles » absente de launches.html" ; exit 1 ; }
+          if grep -q 'data-sort="payloads"' _site/launches.html ; then
+            echo "colonne « Charges utiles » séparée encore présente : la fusion n'est plus effective" ; exit 1
+          fi
+          grep -q 'objectsCell' _site/assets/js/explorer.js \
+            || { echo "rendu de la colonne fusionnée absent de explorer.js" ; exit 1 ; }
+          # Le bandeau du vol filtré affiche le décompte des objets non listés
+          # (étages, débris) : il est rendu par charges-utiles.js, et si le
+          # rendu disparaît le lecteur ne sait plus ce qui manque au catalogue.
+          grep -q 'non listé' _site/assets/js/charges-utiles.js \
+            || { echo "décompte des objets non listés absent de charges-utiles.js" ; exit 1 ; }
           echo "--- poids ---"
           du -sh _site
           du -h _site/data/launches.json _site/data/charges-utiles.json
