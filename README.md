@@ -9,7 +9,7 @@ Le dépôt remplit trois rôles :
 
 1. **entrepôt de données brutes** — `data/gcat/` contient les fichiers TSV du GCAT, tels que publiés,
    resynchronisés automatiquement chaque semaine ;
-2. **code de calcul** — `scripts/build_site.py` agrège les TSV et produit les classements ;
+2. **code de calcul** — `scripts/build_site.py` (et ses modules `scripts/sitebuild/`) agrège les TSV et produit les classements ;
 3. **site statique pré-calculé** (GitHub Pages) — un simple tas de fichiers HTML servis par le CDN
    de GitHub, sans serveur applicatif.
 
@@ -235,7 +235,15 @@ Les règles détaillées, la couverture des tables de référence et les sources
 │   └── js/charges-utiles.js    # filtres du catalogue (lit data/charges-utiles.json)
 ├── scripts/
 │   ├── fetch_gcat.py           # récupération des TSV (stdlib)
-│   ├── build_site.py           # agrégation + rendu → _site/
+│   ├── build_site.py           # point d'entrée du build : orchestration + rendu → _site/
+│   ├── sitebuild/              # modules du build (chacun < 300 lignes)
+│   │   ├── constants.py        # chemins, familles d'orbites, définition des classements
+│   │   ├── gcat.py             # lecture des TSV, traduction des codes, dates
+│   │   ├── launches.py         # lancements : issue, code représentatif
+│   │   ├── payloads.py         # charges utiles : masse, destination, vol habité
+│   │   ├── stats.py            # agrégations, classements, faits marquants
+│   │   ├── rendering.py        # formatage, gabarits, écriture des JSON
+│   │   └── reports.py          # journal du build (orbites, vols habités, codes)
 │   ├── diagnose_gcat.py        # rapport de vocabulaire sur les données brutes
 │   └── diagnose_codes.py       # inventaire des codes à traduire
 ├── data/gcat/                  # données brutes GCAT + MANIFEST.json
