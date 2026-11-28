@@ -14,7 +14,8 @@ JSON, journal du build) pour que rien ne devienne invérifiable.
 
 Les charges utiles (`satcat.tsv`, complété par `ftocat.tsv` pour les échecs)
 fournissent les colonnes ajoutées à l'explorateur : la **masse en orbite**
-(somme des `Mass` des charges utiles réellement cataloguées en orbite), la
+(somme des `Mass` des charges utiles réellement cataloguées en orbite, corrigée
+pour les premiers vols habités — voir `ORBITAL_MASS_CORRECTIONS`), la
 **destination** (famille d'orbite déduite de `OpOrbit`) et le caractère
 **habité** du vol (marqueur d'équipage du champ `Type`). Ce sont elles aussi
 qui alimentent `charges-utiles.html`, la page vers laquelle pointe chaque vol.
@@ -44,7 +45,12 @@ from sitebuild.rendering import (
     render,
     write_json,
 )
-from sitebuild.reports import report_codes, report_crewed, report_orbits
+from sitebuild.reports import (
+    report_codes,
+    report_crewed,
+    report_mass_corrections,
+    report_orbits,
+)
 from sitebuild.stats import (
     aggregate,
     build_highlights,
@@ -92,6 +98,7 @@ def main() -> int:
     report_codes(dataset, "Launch_Code")
     report_codes(dataset, "LVState")
     report_orbits(payloads)
+    report_mass_corrections(payloads)
     report_crewed(launches)
     translator.report()
 
@@ -230,7 +237,9 @@ def main() -> int:
     write_json(out_dir / "data" / "launches.json", payload)
 
     # Charges utiles : une entrée par charge utile, pour la page filtrée par vol.
-    # `cr` vaut 1 quand la charge porte le marqueur d'équipage du vol.
+    # `cr` vaut 1 quand la charge porte le marqueur d'équipage du vol ; `m` est la
+    # masse retenue (`mass_corrected`), donc la masse orbitale NSSDCA pour les
+    # vaisseaux habités précoces corrigés.
     write_json(
         out_dir / "data" / "charges-utiles.json",
         {
@@ -241,7 +250,7 @@ def main() -> int:
                     "t": item["launch"],
                     "n": item["name"],
                     "y": item["year"],
-                    "m": item["mass"],
+                    "m": item["mass_corrected"],
                     "o": item["orbit"],
                     "r": item["orbit_code"],
                     "ow": item["owner"],
