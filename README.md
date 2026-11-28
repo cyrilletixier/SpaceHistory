@@ -9,7 +9,7 @@ Le dépôt remplit trois rôles :
 
 1. **entrepôt de données brutes** — `data/gcat/` contient les fichiers TSV du GCAT, tels que publiés,
    resynchronisés automatiquement chaque semaine ;
-2. **code de calcul** — `scripts/build_site.py` agrège les TSV et produit les classements ;
+2. **code de calcul** — `scripts/build_site.py` (et ses modules `scripts/sitebuild/`) agrège les TSV et produit les classements ;
 3. **site statique pré-calculé** (GitHub Pages) — un simple tas de fichiers HTML servis par le CDN
    de GitHub, sans serveur applicatif.
 
@@ -34,7 +34,7 @@ Conséquences directes :
 |---|---|
 | `index.html` | présentation, état de la base, repères, méthode |
 | `launches.html` | explorateur : toutes les tentatives orbitales depuis 1957, filtrables par vol habité |
-| `charges-utiles.html` | catalogue des charges utiles, filtrable par vol (`?vol=`) et par équipage |
+| `charges-utiles.html` | catalogue des charges utiles, filtrable par vol (`?vol=`), par statut et par équipage |
 | `classements/index.html` | index des classements |
 | `classements/decennies.html` | tentatives, issues et objets, décennie par décennie |
 | `classements/annees.html` | le rythme annuel depuis 1957 |
@@ -153,12 +153,14 @@ L'explorateur des lancements porte des colonnes calculées au build à partir de
   distingue les étages `R`, les débris `D`, les composants…). Chaque charge utile est
   rattachée à son vol par `Launch_Tag`.
 - **Masse en orbite** = somme du champ `Mass` (kg) des charges utiles **cataloguées en
-  orbite** pour ce vol. Le `0` que le GCAT écrit quand la masse est inconnue (plus de
-  32 000 objets) est traité comme une absence, pas comme un zéro : ces charges utiles sont
-  écartées de la somme, et le nombre de masses réellement additionnées est visible au
-  survol. Un vol sans aucune masse connue affiche « — ». Une charge perdue lors d'un échec
-  n'entre pas dans la somme (elle n'a pas été mise en orbite) : elle apparaît en revanche
-  sur la page des charges utiles, avec le statut « échec ».
+  orbite** pour ce vol, après correction de la masse orbitale des premiers vaisseaux
+  habités (voir *Correction des vaisseaux habités précoces*). Le `0` que le GCAT écrit
+  quand la masse est inconnue (plus de 32 000 objets) est traité comme une absence, pas
+  comme un zéro : ces charges utiles sont écartées de la somme, et le nombre de masses
+  réellement additionnées est visible au survol. Un vol sans aucune masse connue affiche
+  « — ». Une charge perdue lors d'un échec n'entre pas dans la somme (elle n'a pas été mise
+  en orbite) : elle apparaît en revanche sur la page des charges utiles, avec le statut
+  « échec ».
 - **Destination** = famille d'orbite déduite de `OpOrbit` : `LLEO`/`LEO` → **LEO**,
   `MEO`, `GEO`/`GSO`, `HEO`, `LLO`/`LMO`/`LSO` → **Lunaire**, `EEO`/`HCO` →
   **Interplanétaire**. Le qualificatif après la barre oblique (`LLEO/I`, `GEO/T`) précise
@@ -230,6 +232,63 @@ fourchette 340–400, et sept vols de référence (Apollo 6 et 7, Buran, Shenzho
 Dragon Demo-1, Shenzhou 12) doivent être marqués dans le bon sens. Un déplacement de
 l'encodage rendrait ces contrôles rouges plutôt que de vider silencieusement le filtre.
 
+### Correction des vaisseaux habités précoces
+
+Pour les 22 premiers vaisseaux habités, le champ `Mass` du GCAT ne donne pas la masse du
+vaisseau **placé en orbite**. La table `ORBITAL_MASS_CORRECTIONS`
+(`scripts/sitebuild/payloads.py`) lui substitue la valeur publiée par la NASA (NSSDCA),
+fiche par fiche :
+
+| Véhicule | Vols couverts | Masse orbitale retenue |
+|---|---|---|
+| Vostok | Vostok 1 à 6 | 4 725 kg (Vostok 1), 4 730 kg (Vostok 2 à 6) |
+| Voskhod | Voskhod 1 et 2 | 5 320 kg, 5 682 kg |
+| Mercury | Mercury 6 à 9 | 1 355 kg |
+| Gemini | Gemini 3 à 12 | de 3 228 à 3 812 kg selon le vol |
+
+Règles de la correction :
+
+- **correspondance exacte** sur le champ `Name` de `satcat.tsv` : ni recherche floue, ni nom
+  recomposé — la même exigence que pour les libellés, qui ne sont jamais réécrits à la main ;
+- **une entrée par vol** : Vostok 1 et Vostok 2 sont deux lignes distinctes, comme URSS et
+  Russie restent deux États ; aucune entrée ne regroupe plusieurs missions ;
+- **deux masses conservées** : `mass_gcat` (la valeur du catalogue) et `mass_corrected`
+  (la valeur retenue). C'est la seconde qui alimente la colonne « Masse » du catalogue des
+  charges utiles *et* la masse en orbite de l'explorateur, donc les sommes par vol, par
+  décennie et par année ;
+- **la source est dans la table**, à côté de la masse (`NASA NSSDCA 1961-012A`…) : une
+  correction non sourcée n'a pas sa place ici ;
+- **une masse inconnue reste une absence** : la correction rectifie une valeur existante,
+  elle ne remplit jamais un trou.
+
+Le journal du build verrouille l'application de la table :
+
+```
+masses corrigées : 22 charge(s) utile(s)
+```
+
+Il signale en plus deux anomalies possibles — une entrée de la table qui ne rencontre
+**aucune** charge utile du catalogue (nom renommé côté GCAT : la correction ne s'applique
+plus à rien) et un vol habité dont le nom évoque `vostok|voskhod|mercury|gemini` sans
+correction associée (un vol précoce oublié). Les deux sortent en `::warning::` plutôt que
+de rester silencieuses.
+
+Vérification locale :
+
+```bash
+python3 scripts/build_site.py --data data/gcat --out _site
+python3 - <<'PY'
+import json
+from pathlib import Path
+
+payloads = json.loads(
+    Path("_site/data/charges-utiles.json").read_text(encoding="utf-8")
+)["payloads"]
+print({item["n"]: item["m"] for item in payloads if item["n"] == "Vostok 1"})
+PY
+# attendu : {'Vostok 1': 4725}
+```
+
 Les règles détaillées, la couverture des tables de référence et les sources alternatives
 (Space-Track, CelesTrak, UNOOSA…) sont documentées dans [`SOURCES.md`](SOURCES.md).
 
@@ -251,7 +310,17 @@ Les règles détaillées, la couverture des tables de référence et les sources
 │   └── js/charges-utiles.js    # filtres du catalogue (lit data/charges-utiles.json)
 ├── scripts/
 │   ├── fetch_gcat.py           # récupération des TSV (stdlib)
-│   ├── build_site.py           # agrégation + rendu → _site/
+│   ├── build_site.py           # point d'entrée du build : orchestration + rendu → _site/
+│   ├── sitebuild/              # modules du build (chacun < 300 lignes)
+│   │   ├── constants.py        # chemins, familles d'orbites, définition des classements
+│   │   ├── gcat.py             # lecture des TSV, traduction des codes, dates
+│   │   ├── launches.py         # lancements : issue, code représentatif
+│   │   ├── payloads.py         # charges utiles : masse (corrections NSSDCA), statut, noms,
+│   │   │                       # destination, vol habité
+│   │   ├── stats.py            # agrégations, classements, faits marquants
+│   │   ├── rendering.py        # formatage, gabarits, écriture des JSON
+│   │   └── reports.py          # journal du build (orbites, statuts, masses corrigées,
+│   │                           # vols habités, codes)
 │   ├── diagnose_gcat.py        # rapport de vocabulaire sur les données brutes
 │   └── diagnose_codes.py       # inventaire des codes à traduire
 ├── data/gcat/                  # données brutes GCAT + MANIFEST.json
