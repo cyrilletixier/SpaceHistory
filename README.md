@@ -261,8 +261,16 @@ Vérification locale :
 
 ```bash
 python3 scripts/build_site.py --data data/gcat --out _site
-grep -o '"n": "Vostok 1", "y": [0-9]*, "m": [0-9]*' _site/data/charges-utiles.json
-# attendu : "n": "Vostok 1", …, "m": 4725
+python3 - <<'PY'
+import json
+from pathlib import Path
+
+payloads = json.loads(
+    Path("_site/data/charges-utiles.json").read_text(encoding="utf-8")
+)["payloads"]
+print({item["n"]: item["m"] for item in payloads if item["n"] == "Vostok 1"})
+PY
+# attendu : {'Vostok 1': 4725}
 ```
 
 Les règles détaillées, la couverture des tables de référence et les sources alternatives
@@ -291,7 +299,7 @@ Les règles détaillées, la couverture des tables de référence et les sources
 │   │   ├── constants.py        # chemins, familles d'orbites, définition des classements
 │   │   ├── gcat.py             # lecture des TSV, traduction des codes, dates
 │   │   ├── launches.py         # lancements : issue, code représentatif
-│   │   ├── payloads.py         # charges utiles : masse (+ corrections NSSDCA), destination, vol habité
+│   │   ├── payloads.py         # charges utiles : masse (corrections NSSDCA), destination, vol habité
 │   │   ├── stats.py            # agrégations, classements, faits marquants
 │   │   ├── rendering.py        # formatage, gabarits, écriture des JSON
 │   │   └── reports.py          # journal du build (orbites, masses corrigées, vols habités, codes)
