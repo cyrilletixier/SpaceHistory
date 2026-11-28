@@ -16,6 +16,7 @@ on:
       - 'scripts/diagnose_gcat.py'
       - 'scripts/diagnose_codes.py'
       - 'scripts/build_site.py'
+      - 'scripts/sitebuild/**'
       - 'templates/**'
   workflow_dispatch:
 
