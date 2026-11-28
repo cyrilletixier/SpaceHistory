@@ -18,7 +18,9 @@ fournissent les colonnes ajoutées à l'explorateur : la **masse en orbite**
 pour les premiers vols habités — voir `ORBITAL_MASS_CORRECTIONS`), la
 **destination** (famille d'orbite déduite de `OpOrbit`) et le caractère
 **habité** du vol (marqueur d'équipage du champ `Type`). Ce sont elles aussi
-qui alimentent `charges-utiles.html`, la page vers laquelle pointe chaque vol.
+qui alimentent `charges-utiles.html`, où chaque charge utile porte en plus son
+**statut actuel** (`Status` de `satcat.tsv`) et ses **noms alternatifs** du
+catalogue (`PLName`, nom d'usage de `psatcat.tsv`).
 
 Aucune donnée n'est envoyée sur le réseau : le script lit data/gcat/*.tsv.
 """
@@ -50,6 +52,7 @@ from sitebuild.reports import (
     report_crewed,
     report_mass_corrections,
     report_orbits,
+    report_payload_status,
 )
 from sitebuild.stats import (
     aggregate,
@@ -83,7 +86,7 @@ def main() -> int:
     translator = Translator(data_dir)
     launches = build_launches(dataset, translator)
 
-    # Charges utiles : masses, orbites et équipage viennent de satcat.tsv
+    # Charges utiles : masses, orbites, statut et équipage viennent de satcat.tsv
     # (objets catalogués) et de ftocat.tsv (charges perdues en échec).
     payloads = read_payloads(data_dir, translator)
     attach_payloads(launches, payloads)
@@ -98,6 +101,7 @@ def main() -> int:
     report_codes(dataset, "Launch_Code")
     report_codes(dataset, "LVState")
     report_orbits(payloads)
+    report_payload_status(payloads)
     report_mass_corrections(payloads)
     report_crewed(launches)
     translator.report()
@@ -240,11 +244,21 @@ def main() -> int:
     # `cr` vaut 1 quand la charge porte le marqueur d'équipage du vol ; `m` est la
     # masse retenue (`mass_corrected`), donc la masse orbitale NSSDCA pour les
     # vaisseaux habités précoces corrigés.
+    # `sc` est le code `Status` brut ; son statut lisible se lit dans la table
+    # `statuts` écrite une seule fois en tête de fichier (voir PAYLOAD_STATUS),
+    # plutôt que répété sur 28 000 lignes. `fd` (date de fin de phase, `DDate`)
+    # et `a` (noms alternatifs du catalogue) ne sont écrits que lorsqu'ils
+    # existent, pour garder le JSON léger.
     write_json(
         out_dir / "data" / "charges-utiles.json",
         {
-            "source": "GCAT — satcat.tsv + ftocat.tsv (Jonathan McDowell)",
+            "source": "GCAT — satcat.tsv + ftocat.tsv + psatcat.tsv (Jonathan McDowell)",
             "generated": manifest.get("generated_at"),
+            "statuts": {
+                item["status_code"]: item["status"]
+                for item in payloads
+                if not item["failed"] and item["status_code"]
+            },
             "payloads": [
                 {
                     "t": item["launch"],
@@ -255,8 +269,11 @@ def main() -> int:
                     "r": item["orbit_code"],
                     "ow": item["owner"],
                     "f": 1 if item["failed"] else 0,
+                    "sc": item["status_code"],
                     "cr": 1 if item["crewed"] else 0,
                     "ty": item["type"],
+                    **({"fd": item["end_date"]} if item["end_date"] else {}),
+                    **({"a": item["aliases"]} if item["aliases"] else {}),
                 }
                 for item in payloads
             ],

@@ -1,4 +1,4 @@
-"""Charges utiles : masse en orbite, destination, vol habité, rattachement aux lancements."""
+"""Charges utiles : masse en orbite, statut actuel, noms, vol habité, rattachement."""
 
 from __future__ import annotations
 
@@ -65,6 +65,97 @@ def is_crewed(kind: str) -> bool:
     """
     marker = (kind or "").strip().upper()
     return len(marker) > CREW_MARK_INDEX and marker[CREW_MARK_INDEX] == CREW_MARK
+
+
+# --------------------------------------------------------------------------- #
+# Statut actuel d'une charge utile (champ `Status` de `satcat.tsv`)
+# --------------------------------------------------------------------------- #
+
+# Le champ `Status` ne dit pas « en orbite / pas en orbite » : il nomme
+# l'événement qui clôt la phase en cours de l'objet (rentrée, atterrissage,
+# amarrage…), dont `DDate` donne la date — vide tant que la phase dure. Les
+# définitions sont celles de la documentation du GCAT (`web/intro/phases.html`).
+#
+# Être dans `satcat.tsv` veut seulement dire « a été mis en orbite » : Sputnik 1
+# y figure avec `R` (rentré le 4 janvier 1958). D'où ce regroupement, qui range
+# chaque code dans une famille lisible sans perdre le code brut (affiché au
+# survol). `N` (renommé) reste « en orbite » : la phase se termine par un
+# changement de nom ou de propriétaire, pas par une fin physique.
+#
+# Le suffixe `?` (date ou issue incertaine, `R?`, `L?`) ne change pas la
+# famille. Un code absent de cette table n'est pas rangé d'office : il
+# s'affiche tel quel et le journal du build le signale, comme pour les orbites.
+PAYLOAD_STATUS = {
+    "en orbite": {"O", "OX", "AO", "AO IN", "N", "NA", "LEASE"},
+    "rentré": {"R", "AR", "AR IN", "D", "AS", "S"},
+    "posé": {"L", "AL", "AL IN", "LF", "TX", "DEP"},
+    "espace lointain": {"DSO", "DSA", "DSA IN", "EO", "EAO", "EN"},
+    "rattaché": {
+        "DK", "GRP", "ATT", "TFR", "TFR E", "TFR IN", "EVA DP", "EVA RP",
+    },
+    "détruit": {"E", "C", "F", "AF"},
+}
+PAYLOAD_STATUS_BY_CODE = {
+    code: label for label, codes in PAYLOAD_STATUS.items() for code in codes
+}
+# Statut des charges utiles de `ftocat.tsv` : perdues avant d'atteindre l'orbite.
+PAYLOAD_FAILED = "échec"
+
+
+def payload_status(raw: str) -> str:
+    """Statut actuel d'une charge utile cataloguée, d'après `Status`.
+
+    Voir `PAYLOAD_STATUS`. Le `?` final (issue incertaine) est ignoré pour le
+    classement ; un code inconnu est rendu tel quel plutôt que rangé d'office.
+    """
+    code = " ".join((raw or "").strip().upper().rstrip("?").split())
+    if not code or code in UNKNOWN_CODES:
+        return ""
+    return PAYLOAD_STATUS_BY_CODE.get(code, code)
+
+
+def alias_names(name: str, *candidates: str) -> list[str]:
+    """Noms alternatifs du catalogue, sans doublon ni valeur vide.
+
+    `PLName` (nom constructeur) et le nom de `psatcat.tsv` (nom d'usage, entre
+    crochets quand il n'est pas officiel : `[Vanguard I]`) aident à reconnaître
+    un objet que le nom principal du GCAT, tiré de l'opérateur, rend obscur :
+    `1-y ISZ` est aussi `PS-1` et `First Sputnik`.
+    """
+    seen = {(name or "").strip().lower()}
+    aliases: list[str] = []
+    for raw in candidates:
+        value = (raw or "").strip()
+        if value.startswith("[") and value.endswith("]"):
+            value = value[1:-1].strip()
+        value = value.rstrip("?").strip()
+        if not value or value in UNKNOWN_CODES or value.lower() in seen:
+            continue
+        seen.add(value.lower())
+        aliases.append(value)
+    return aliases
+
+
+def read_psatcat_names(data_dir: Path) -> dict[str, str]:
+    """Nom d'usage de chaque charge utile (`psatcat.tsv`), par JCAT.
+
+    Le catalogue des charges utiles du GCAT porte un `Name` d'usage (« First
+    Sputnik ») que `satcat.tsv` n'a pas ; il est joint par `JCAT`, jamais par
+    le nom. Fichier absent ou colonne manquante : aucune correspondance, plutôt
+    qu'un libellé inventé.
+    """
+    path = data_dir / "psatcat.tsv"
+    if not path.exists():
+        return {}
+    table = read_gcat_tsv(path)
+    jcat, name = table.col("JCAT"), table.col("Name")
+    if jcat < 0 or name < 0:
+        return {}
+    return {
+        table.cell(row, jcat).strip(): table.cell(row, name).strip()
+        for row in table.rows
+        if table.cell(row, jcat).strip()
+    }
 
 
 # --------------------------------------------------------------------------- #
@@ -171,8 +262,13 @@ def read_payloads(data_dir: Path, translator: Translator | None = None) -> list[
 
     Une charge utile est une ligne dont le champ `Type` commence par `P` (le
     catalogue distingue les étages `R`, les débris `D`, les composants…).
+
+    Le statut affiché n'est pas déduit de la table d'origine : une charge de
+    `satcat.tsv` a été mise en orbite, pas forcément y est restée. Il vient du
+    champ `Status` (voir `PAYLOAD_STATUS`), et `DDate` date la fin de phase.
     """
     payloads: dict[tuple[str, str], dict] = {}
+    usual_names = read_psatcat_names(data_dir)
 
     for filename, failed in (("satcat.tsv", False), ("ftocat.tsv", True)):
         path = data_dir / filename
@@ -184,7 +280,7 @@ def read_payloads(data_dir: Path, translator: Translator | None = None) -> list[
             name: table.col(name)
             for name in (
                 "JCAT", "Launch_Tag", "Name", "PLName", "Type", "Mass",
-                "OpOrbit", "Owner", "LDate",
+                "OpOrbit", "Owner", "LDate", "Status", "DDate",
             )
         }
         if idx["Type"] < 0 or idx["Launch_Tag"] < 0:
@@ -213,6 +309,11 @@ def read_payloads(data_dir: Path, translator: Translator | None = None) -> list[
             override = orbital_mass_override(name)
             mass_corrected = override["orbital_mass"] if override else mass_gcat
 
+            status_code = table.cell(row, idx["Status"]).strip()
+            end_date = " ".join(table.cell(row, idx["DDate"]).split())
+            if end_date in UNKNOWN_CODES:
+                end_date = ""
+
             payloads[key] = {
                 "jcat": jcat,
                 "launch": tag,
@@ -224,6 +325,14 @@ def read_payloads(data_dir: Path, translator: Translator | None = None) -> list[
                 "orbit_code": orbit_code,
                 "owner": translator.org(owner_code) if translator else owner_code,
                 "failed": failed,
+                "status": PAYLOAD_FAILED if failed else payload_status(status_code),
+                "status_code": status_code,
+                "end_date": end_date,
+                "aliases": alias_names(
+                    name,
+                    table.cell(row, idx["PLName"]),
+                    usual_names.get(jcat, ""),
+                ),
                 "crewed": is_crewed(kind),
                 "type": kind,
             }

@@ -34,7 +34,7 @@ Conséquences directes :
 |---|---|
 | `index.html` | présentation, état de la base, repères, méthode |
 | `launches.html` | explorateur : toutes les tentatives orbitales depuis 1957, filtrables par vol habité |
-| `charges-utiles.html` | catalogue des charges utiles, filtrable par vol (`?vol=`) et par équipage |
+| `charges-utiles.html` | catalogue des charges utiles, filtrable par vol (`?vol=`), par statut et par équipage |
 | `classements/index.html` | index des classements |
 | `classements/decennies.html` | tentatives, issues et objets, décennie par décennie |
 | `classements/annees.html` | le rythme annuel depuis 1957 |
@@ -85,8 +85,8 @@ Le build échoue explicitement si `data/gcat/launchlog.tsv` est absent.
 | `active.tsv` | `derived/` | satellites actuellement actifs | `objets.html` |
 | `currentcat.tsv` | `derived/` | objets actuellement en orbite, débris compris | — (à venir) |
 | `geotab.tsv` | `derived/` | journal des satellites géostationnaires | — (à venir) |
-| `satcat.tsv` | `cat/` | catalogue complet de tous les objets spatiaux | **masse et orbite** des charges utiles, **marqueur d'équipage** |
-| `psatcat.tsv` | `cat/` | catalogue des charges utiles (programme, catégorie, commentaire) | — (à venir) |
+| `satcat.tsv` | `cat/` | catalogue complet de tous les objets spatiaux | **masse, orbite et statut actuel** des charges utiles, **marqueur d'équipage** |
+| `psatcat.tsv` | `cat/` | catalogue des charges utiles (programme, catégorie, commentaire) | **nom d'usage** des charges utiles |
 | `ftocat.tsv` | `cat/` | catalogue des échecs de mise en orbite | charges utiles perdues |
 | `deepcat.tsv` | `cat/` | catalogue de l'espace lointain | — (à venir) |
 | `sites.tsv` | `tables/` | **référence** : code de site → nom, coordonnées | libellés des sites |
@@ -171,6 +171,24 @@ L'explorateur des lancements porte des colonnes calculées au build à partir de
   vers `charges-utiles.html?vol=<Launch_Tag>`, dont le bandeau affiche combien d'objets
   du tir (étages, débris) ne sont pas des charges utiles listées. Les noms restent dans
   `launches.json` (champ `n`) pour que la recherche de l'explorateur continue de fonctionner.
+- **Statut d'une charge utile** = état **actuel**, lu dans le champ `Status` de
+  `satcat.tsv`, et non déduit de la table d'origine : figurer dans `satcat.tsv` veut
+  seulement dire « a été mis en orbite » (Sputnik 1 y est, avec `R` : rentré le
+  4 janvier 1958). Ce champ nomme l'événement qui clôt la phase en cours de l'objet, et
+  `DDate` en donne la date (vide tant que la phase dure). Les codes sont regroupés selon la
+  documentation du GCAT (*phases.html*) : `O`, `OX`, `AO`, `N`, `NA`, `LEASE` → **en
+  orbite** ; `R`, `AR`, `D`, `AS`, `S` → **rentré** ; `L`, `AL`, `LF`, `TX`, `DEP` → **posé** ;
+  `DSO`, `DSA`, `EO`, `EAO`, `EN` → **espace lointain** ; `DK`, `GRP`, `ATT`, `TFR`,
+  `EVA DP`, `EVA RP` → **rattaché** à un autre objet ; `E`, `C`, `F`, `AF` → **détruit** ;
+  les charges de `ftocat.tsv` restent en **échec**. Le suffixe `?` ne change pas la famille.
+  Un code non rangé s'affiche tel quel et le journal du build le signale. Le code brut et
+  `DDate` restent au survol ; la table code → statut est écrite une seule fois dans
+  `charges-utiles.json` (champ `statuts`).
+- **Noms** : le nom principal reste le `Name` du GCAT, tiré de l'opérateur (`1-y ISZ`).
+  Dessous s'affichent les autres noms du catalogue quand ils diffèrent : `PLName` (nom
+  constructeur, `PS-1`) et le `Name` de `psatcat.tsv` (nom d'usage, `First Sputnik`,
+  crochets de nom non officiel retirés). La jointure se fait par `JCAT`, jamais par le nom ;
+  la recherche de la page porte sur tous ces noms.
 
 ### Vols habités
 
@@ -299,10 +317,12 @@ Les règles détaillées, la couverture des tables de référence et les sources
 │   │   ├── constants.py        # chemins, familles d'orbites, définition des classements
 │   │   ├── gcat.py             # lecture des TSV, traduction des codes, dates
 │   │   ├── launches.py         # lancements : issue, code représentatif
-│   │   ├── payloads.py         # charges utiles : masse (corrections NSSDCA), destination, vol habité
+│   │   ├── payloads.py         # charges utiles : masse (corrections NSSDCA), statut, noms,
+│   │   │                       # destination, vol habité
 │   │   ├── stats.py            # agrégations, classements, faits marquants
 │   │   ├── rendering.py        # formatage, gabarits, écriture des JSON
-│   │   └── reports.py          # journal du build (orbites, masses corrigées, vols habités, codes)
+│   │   └── reports.py          # journal du build (orbites, statuts, masses corrigées,
+│   │                           # vols habités, codes)
 │   ├── diagnose_gcat.py        # rapport de vocabulaire sur les données brutes
 │   └── diagnose_codes.py       # inventaire des codes à traduire
 ├── data/gcat/                  # données brutes GCAT + MANIFEST.json

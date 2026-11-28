@@ -21,8 +21,8 @@ Fichiers utilisés (copie brute dans `data/gcat/`) :
 | Fichier | URL source | Usage dans ce dépôt |
 |---|---|---|
 | `launchlog.tsv` | `…/tsv/derived/launchlog.tsv` | page **Lancements** (agrégé par `Launch_Tag`) et tous les classements |
-| `psatcat.tsv` | `…/tsv/cat/psatcat.tsv` | explorateur objet par objet (à venir) |
-| `satcat.tsv` | `…/tsv/cat/satcat.tsv` | analyses à venir (masse, orbite) |
+| `psatcat.tsv` | `…/tsv/cat/psatcat.tsv` | nom d'usage des charges utiles (page **Charges utiles**) |
+| `satcat.tsv` | `…/tsv/cat/satcat.tsv` | masse, orbite, équipage et statut actuel (`Status`, `DDate`) des charges utiles |
 | `active.tsv` | `…/tsv/derived/active.tsv` | satellites actifs (`objets.html`) |
 | `currentcat.tsv` | `…/tsv/derived/currentcat.tsv` | objets en orbite, débris compris |
 | `geotab.tsv` | `…/tsv/derived/geotab.tsv` | journal GEO |
@@ -135,7 +135,35 @@ Le journal du build imprime cette couverture à chaque exécution : vocabulaire 
 classement traduit. Une dérive du catalogue se voit donc dans le journal, jamais dans les
 chiffres publiés sans trace.
 
-## 5. Citation
+## 5. Statut et noms des charges utiles
+
+Le statut affiché sur la page **Charges utiles** ne vient pas de la table d'origine :
+figurer dans `satcat.tsv` veut seulement dire « a été mis en orbite ». Le champ `Status`
+nomme l'événement qui clôt la phase en cours de l'objet — ses valeurs sont documentées par
+le GCAT dans `web/intro/phases.html` — et `DDate` en donne la date, vide tant que la phase
+dure.
+
+| Code (préfixe) | Famille affichée | Sens dans le catalogue |
+|---|---|---|
+| `O`, `OX`, `AO`, `N`, `NA`, `LEASE` | en orbite | toujours en orbite, arrimé, ou suivi perdu |
+| `R`, `AR`, `D`, `AS`, `S` | rentré | rentrée atmosphérique ou désorbitation |
+| `L`, `AL`, `LF`, `TX`, `DEP` | posé | atterrissage ou amerrissage |
+| `DSO`, `DSA`, `EO`, `EAO`, `EN` | espace lointain | sorti de l'orbite terrestre |
+| `DK`, `GRP`, `ATT`, `TFR`, `EVA DP`, `EVA RP` | rattaché | amarré ou intégré à un autre objet |
+| `E`, `C`, `F`, `AF` | détruit | explosion, collision, destruction |
+| — (`ftocat.tsv`) | échec | perdu avant la mise en orbite |
+
+Le suffixe `?` (issue incertaine) ne change pas la famille ; un code absent de cette table
+n'est pas rangé d'office : il s'affiche tel quel et le journal du build le signale, comme
+pour les orbites et les codes d'agence.
+
+Les **noms** ne sont jamais recomposés à la main. Le nom principal reste le `Name` du GCAT,
+tiré de l'opérateur (`1-y ISZ`) ; les autres noms du catalogue s'affichent dessous quand ils
+diffèrent — `PLName` (nom constructeur, `PS-1`) et le `Name` de `psatcat.tsv` (nom d'usage,
+`First Sputnik`, les crochets d'un nom non officiel étant retirés). La jointure se fait par
+`JCAT`, jamais par le nom.
+
+## 6. Citation
 
 > McDowell, J., 2020: General Catalog of Artificial Space Objects,
 > <https://planet4589.org/space/gcat> (CC BY 4.0)

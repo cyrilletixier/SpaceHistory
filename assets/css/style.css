@@ -518,6 +518,9 @@ code {
 
 .data-table td.name { white-space: normal; min-width: 220px; max-width: 420px; }
 
+/* Noms alternatifs du catalogue, sous le nom principal (charges utiles). */
+.data-table td.name .alias { display: block; font-size: 11px; color: var(--dim); }
+
 .data-table td.key { color: var(--fg); }
 
 .data-table td.muted { color: var(--dim); }

@@ -161,7 +161,7 @@ function objectsCell(item) {
   const url = `charges-utiles.html?vol=${encodeURIComponent(item.t)}`;
   const tip = payloads
     ? (item.pi && item.pi !== payloads
-      ? `${fmt.format(objects)} objet(s), dont ${fmt.format(payloads)} charge(s) utile(s) — ${fmt.format(item.pi)} en orbite — voir le détail`
+      ? `${fmt.format(objects)} objet(s), dont ${fmt.format(payloads)} charge(s) utile(s) — ${fmt.format(item.pi)} mise(s) en orbite — voir le détail`
       : `${fmt.format(objects)} objet(s), dont ${fmt.format(payloads)} charge(s) utile(s) — voir le détail`)
     : `${fmt.format(objects)} objet(s), aucune charge utile cataloguée — voir le détail`;
 

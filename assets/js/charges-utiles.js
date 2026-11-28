@@ -9,7 +9,14 @@
 
    `cr` vaut 1 quand le vol emportait un équipage (marqueur du GCAT, 2e
    caractère du champ `Type`), `ty` conserve le code `Type` brut pour que la
-   règle reste vérifiable au survol. */
+   règle reste vérifiable au survol.
+
+   Statut : `f` vaut 1 pour une charge perdue lors d'un échec (`ftocat.tsv`).
+   Sinon le statut actuel vient du code `Status` du GCAT (`sc`), traduit par la
+   table `statuts` du JSON, calculée au build : une charge cataloguée a été mise
+   en orbite, elle n'y est pas forcément restée (Sputnik 1 : `R`, rentré le
+   4 janvier 1958). `fd` est la date de fin de phase (`DDate`), `a` les noms
+   alternatifs du catalogue (`PLName`, nom d'usage de `psatcat.tsv`). */
 
 const fmt = new Intl.NumberFormat('fr-FR');
 
@@ -21,12 +28,29 @@ const state = {
 let payloads = [];
 let view = [];
 
+/* Code `Status` du GCAT → statut lisible, écrit par le build. */
+let statuses = {};
+
 /* Lancement filtré, retrouvé dans data/launches.json quand `?vol=` désigne un
    tag exact : il fournit le nombre total d'objets du tir, donc le nombre
    d'objets qui ne sont pas des charges utiles listées ici. */
 let launch = null;
 
 const $ = (id) => document.getElementById(id);
+
+/* Statut affiché : échec au lancement, sinon traduction du code `Status`.
+   Un code que le build n'a pas rangé s'affiche tel quel. */
+function statusOf(item) {
+  if (item.f) return 'échec';
+  if (!item.sc) return '';
+  return statuses[item.sc] || item.sc;
+}
+
+const statusClass = (label) => {
+  if (label === 'en orbite') return ' ok';
+  if (label === 'échec' || label === 'détruit') return ' ko';
+  return '';
+};
 
 const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -40,7 +64,7 @@ function sortValue(item, key) {
     case 'orbit': return (item.o || '').toLowerCase();
     case 'owner': return (item.ow || '').toLowerCase();
     case 'crewed': return item.cr || 0;
-    case 'status': return item.f ? 'échec' : 'en orbite';
+    case 'status': return statusOf(item);
     default: return (item.n || '').toLowerCase();
   }
 }
@@ -51,8 +75,7 @@ function matches(item) {
   if (state.orbit && item.o !== state.orbit) return false;
   if (state.crewed === '1' && !item.cr) return false;
   if (state.crewed === '0' && item.cr) return false;
-  if (state.status === 'orbite' && item.f) return false;
-  if (state.status === 'echec' && !item.f) return false;
+  if (state.status && statusOf(item) !== state.status) return false;
 
   if (state.vol) {
     const needle = state.vol.trim().toLowerCase();
@@ -62,7 +85,7 @@ function matches(item) {
   if (state.q) {
     const needle = state.q.trim().toLowerCase();
     if (needle) {
-      const haystack = `${item.n} ${item.t} ${item.ow}`.toLowerCase();
+      const haystack = `${item.n} ${(item.a || []).join(' ')} ${item.t} ${item.ow}`.toLowerCase();
       if (!haystack.includes(needle)) return false;
     }
   }
@@ -175,6 +198,24 @@ function crewBadge(item) {
   return ` <span class="pill" title="${esc(tip)}">habité</span>`;
 }
 
+/* Noms alternatifs du catalogue, sous le nom principal du GCAT : `1-y ISZ`
+   devient reconnaissable comme `PS-1 · First Sputnik`. */
+function aliasLine(item) {
+  if (!item.a || !item.a.length) return '';
+  return `<span class="alias">${esc(item.a.join(' · '))}</span>`;
+}
+
+/* Pastille de statut. Le code `Status` brut et la date de fin de phase
+   (`DDate`, gardée vague quand le GCAT l'est) restent au survol. */
+function statusCell(item) {
+  const label = statusOf(item);
+  if (!label) return '<span class="dim">—</span>';
+  const tip = item.f
+    ? 'Charge perdue lors du lancement (ftocat.tsv)'
+    : `Code GCAT : ${item.sc}${item.fd ? ` — fin de phase : ${item.fd}` : ''}`;
+  return `<span class="pill${statusClass(label)}" title="${esc(tip)}">${esc(label)}</span>`;
+}
+
 function render() {
   const tbody = $('tbody');
   const start = (state.page - 1) * state.pageSize;
@@ -182,14 +223,14 @@ function render() {
 
   tbody.innerHTML = slice.map((item) => `
     <tr>
-      <td class="name"${item.ty ? ` title="Type GCAT : ${esc(item.ty)}"` : ''}>${esc(item.n) || '<span class="dim">sans nom</span>'}${crewBadge(item)}</td>
+      <td class="name"${item.ty ? ` title="Type GCAT : ${esc(item.ty)}"` : ''}>${esc(item.n) || '<span class="dim">sans nom</span>'}${crewBadge(item)}${aliasLine(item)}</td>
       <td><a class="pill mono" href="charges-utiles.html?vol=${encodeURIComponent(item.t)}"
              title="Voir les charges utiles de ce vol">${esc(item.t)}</a></td>
       <td class="num">${item.y ? fmt.format(item.y) : '<span class="dim">—</span>'}</td>
       <td class="num">${item.m ? `${fmt.format(item.m)}\u00a0kg` : '<span class="dim">—</span>'}</td>
       <td${item.r ? ` title="Code GCAT : ${esc(item.r)}"` : ''}>${esc(item.o) || '<span class="dim">—</span>'}</td>
       <td class="dim">${esc(item.ow) || '—'}</td>
-      <td>${item.f ? '<span class="pill ko">échec</span>' : '<span class="pill ok">en orbite</span>'}</td>
+      <td>${statusCell(item)}</td>
     </tr>`).join('');
 
   $('count').textContent = `${fmt.format(view.length)} charge${view.length > 1 ? 's' : ''} utile${view.length > 1 ? 's' : ''}`;
@@ -308,6 +349,7 @@ async function boot() {
 
     const payload = await response.json();
     payloads = payload.payloads || [];
+    statuses = payload.statuts || {};
 
     /* Le lancement filtré, pour le décompte des objets non listés : il est
        cherché dans data/launches.json, uniquement quand un vol est demandé.
