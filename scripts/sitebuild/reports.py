@@ -40,10 +40,10 @@ def report_orbits(payloads: list[dict]) -> None:
 def report_payload_status(payloads: list[dict]) -> None:
     """Trace les statuts des charges utiles et les codes `Status` non rangés.
 
-    Même principe que `report_orbits` : un code inédit du GCAT doit se voir
-dans le journal du build, pas seulement dans la colonne « Statut » du site.
-    La répartition par famille est affichée en clair, parce qu'elle résume ce que
-    la page des charges utiles montre : `en orbite` n'est pas la seule issue.
+    Même principe que `report_orbits` : un code inédit du GCAT doit se voir dans
+    le journal du build, pas seulement dans la colonne « Statut » du site. La
+    répartition par famille est affichée en clair, parce qu'elle résume ce que la
+    page des charges utiles montre : « en orbite » n'est pas la seule issue.
     """
     known = set(PAYLOAD_STATUS) | {PAYLOAD_FAILED}
     families = Counter(payload["status"] or "—" for payload in payloads)
