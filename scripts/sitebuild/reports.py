@@ -6,6 +6,7 @@ from collections import Counter
 
 from .constants import CREWED_RANGE, ORBIT_ORDER
 from .gcat import Dataset
+from .payloads import CORRECTION_CANDIDATES, ORBITAL_MASS_CORRECTIONS, orbital_mass_override
 from .stats import decade_of
 
 
@@ -28,6 +29,50 @@ def report_orbits(payloads: list[dict]) -> None:
     if unmapped:
         top = ", ".join(f"{code}={count}" for code, count in unmapped.most_common(10))
         print(f"orbites hors familles connues ({len(unmapped)}) : {top}")
+
+
+def report_mass_corrections(payloads: list[dict]) -> None:
+    """Trace les corrections de masse orbitale des premiers vols habités.
+
+    La table `ORBITAL_MASS_CORRECTIONS` remplace la masse du GCAT par la masse
+    orbitale NSSDCA pour 22 vaisseaux. Une substitution silencieuse serait
+    invérifiable : on affiche donc combien de charges utiles elle touche, et
+    deux anomalies possibles.
+
+    - Une entrée de la table qui ne rencontre **aucune** charge utile est
+      signalée : le GCAT a pu renommer l'objet, et la correction ne s'applique
+      alors plus à rien (elle resterait écrite dans le code sans effet).
+    - Une charge utile **habitée** dont le nom évoque une des familles visées
+      (`CORRECTION_CANDIDATES`) sans entrée dans la table est signalée aussi :
+      c'est la façon de voir un vol précoce oublié sans tenir de liste à part.
+    """
+    applied = [payload for payload in payloads if orbital_mass_override(payload["name"])]
+    print(f"masses corrigées : {len(applied)} charge(s) utile(s)")
+
+    names = {payload["name"] for payload in applied}
+    unused = sorted(set(ORBITAL_MASS_CORRECTIONS) - names)
+    if unused:
+        print(
+            f"::warning::corrections de masse sans charge utile correspondante "
+            f"({len(unused)}/{len(ORBITAL_MASS_CORRECTIONS)}) : {', '.join(unused[:8])} "
+            f"— nom renommé dans satcat.tsv ? clé à corriger ?"
+        )
+
+    uncovered = sorted(
+        {
+            payload["name"]
+            for payload in payloads
+            if payload["crewed"]
+            and payload["name"]
+            and CORRECTION_CANDIDATES.search(payload["name"])
+            and not orbital_mass_override(payload["name"])
+        }
+    )
+    if uncovered:
+        print(
+            f"vols habités précoces sans correction de masse ({len(uncovered)}) : "
+            f"{', '.join(uncovered[:8])}"
+        )
 
 
 def report_crewed(launches: list[dict]) -> None:
