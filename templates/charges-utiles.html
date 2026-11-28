@@ -1,6 +1,6 @@
 {% extends "layout.html" %}
 {% block title %}Charges utiles — SpaceHistory{% endblock %}
-{% block description %}Les {{ stats.payloads | int_fr }} charges utiles recensées par le GCAT, avec leur masse, leur destination et leur vol — filtrables par lancement et par vol habité.{% endblock %}
+{% block description %}Les {{ stats.payloads | int_fr }} charges utiles recensées par le GCAT, avec leur masse, leur destination, leur statut et leur vol — filtrables par lancement et par vol habité.{% endblock %}
 {% block content %}
 
   <section class="wrap">
@@ -44,8 +44,13 @@
         <span>Statut</span>
         <select id="f-status">
           <option value="">tous</option>
-          <option value="orbite">en orbite</option>
-          <option value="echec">échec</option>
+          <option value="en orbite">en orbite</option>
+          <option value="rentré">rentré</option>
+          <option value="posé">posé</option>
+          <option value="espace lointain">espace lointain</option>
+          <option value="rattaché">rattaché</option>
+          <option value="détruit">détruit</option>
+          <option value="échec">échec</option>
         </select>
       </label>
       <button class="btn" id="f-reset" type="button">Réinitialiser</button>
@@ -98,6 +103,22 @@
       utiles elle porte.
       Destination : famille d'orbite déduite de <code>OpOrbit</code>, le code brut restant
       accessible au survol. Propriétaires nommés d'après <code>orgs.tsv</code>.
+    </p>
+
+    <p class="note">
+      <strong>Statut</strong> : état actuel de la charge utile, lu dans le champ <code>Status</code>
+      de <code>satcat.tsv</code>. Figurer au catalogue veut seulement dire « a été mis en
+      orbite » : Sputnik 1 y figure, rentré le 4 janvier 1958. <em>En orbite</em> : toujours en
+      orbite (y compris arrimé à un autre objet ou perdu de vue) ; <em>rentré</em> : retombé ou
+      désorbité dans l'atmosphère ; <em>posé</em> : atterri ou amerri ; <em>espace lointain</em> :
+      parti au-delà de l'orbite terrestre ; <em>rattaché</em> : amarré ou intégré à un autre
+      objet, la suite de son parcours n'étant plus suivie sous cette entrée du catalogue ;
+      <em>détruit</em> : explosion ou collision ; <em>échec</em> : perdu au lancement
+      (<code>ftocat.tsv</code>). Le code brut et la date de fin de phase (<code>DDate</code>)
+      restent visibles au survol.
+      Sous le nom du GCAT, tiré de l'opérateur (<code>1-y ISZ</code>), figurent ses autres noms
+      au catalogue : nom constructeur (<code>PLName</code>, <code>PS-1</code>) et nom d'usage de
+      <code>psatcat.tsv</code> (<code>First Sputnik</code>). La recherche porte sur tous.
     </p>
 
     <p class="note">
