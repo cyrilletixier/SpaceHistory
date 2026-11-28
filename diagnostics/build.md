@@ -8,6 +8,11 @@ codes Launch_Code : 25 valeurs distinctes — OS=30505, OF=937, DS=446, OF40=117
 codes LVState : 20 valeurs distinctes — US=21037, SU=4029, CN=2417, RU=2093, F=1260, IN=593, J=336, NZ=291, I-ESA=68, KR=54, IR=24, IL=13, I=12, KP=9, D=7, I-ELDO=5, CYM=4, UK=3, BR=2, AU=1
 destinations (28787 charges utiles) : LEO=25220, GEO=1356, SO=529, MEO=482, ATM=399, HEO=334, Interplanétaire=136, CLO=127, GTO=88, VHEO=67, DSO=37, TA=7
 orbites hors familles connues (8) : SO=529, ATM=399, CLO=127, GTO=88, VHEO=67, DSO=37, TA=7, -=5
+statuts des charges utiles : en orbite=19079, rentré=6680, posé=1075, échec=935, rattaché=630, espace lointain=328, détruit=59, REL=1
+codes Status hors familles connues (1) : REL=1
+masses corrigées : 0 charge(s) utile(s)
+::warning::corrections de masse sans charge utile correspondante (22/22) : Gemini 10, Gemini 11, Gemini 12, Gemini 3, Gemini 4, Gemini 5, Gemini 6A, Gemini 7 — nom renommé dans satcat.tsv ? clé à corriger ?
+vols habités précoces sans correction de masse (18) : Gemini III, Gemini IV, Gemini IX-A, Gemini V, Gemini VI-A, Gemini VII, Gemini VIII, Gemini X
 vols habités : 364 — 1960s=35, 1970s=34, 1980s=60, 1990s=85, 2000s=58, 2010s=48, 2020s=44
 vols habités en échec : 4 — 1975-F02, 1983-F02, 1986-F01, 2018-F01
 libellés sites : 712 entrées ; non résolus : aucun
@@ -46,13 +51,13 @@ libellés pays (10 premiers) :
   Iran — Jomhuri-ye Eslami-ye Iran [IR]
   ESA — European Space Agency [I-ESA]
 7461 lancements, 32258 objets, 11 page(s)
-_site/ : 5738 Ko ; explorateur : 1977 Ko ; charges utiles : 3453 Ko
+_site/ : 7132 Ko ; explorateur : 1977 Ko ; charges utiles : 4842 Ko
 ```
 
 ## Poids des sorties
 
 ```
-5.7M	_site
+7.1M	_site
 2.0M	_site/data/launches.json
 80K	_site/classements/agences.html
 28K	_site/classements/annees.html
@@ -63,7 +68,7 @@ _site/ : 5738 Ko ; explorateur : 1977 Ko ; charges utiles : 3453 Ko
 32K	_site/classements/sites.html
 20K	_site/assets/css
 8.0K	_site/assets/img
-28K	_site/assets/js
+36K	_site/assets/js
 ```
 
 ## Quelques lignes des classements
